@@ -1,0 +1,43 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+var/
+*.log
+
+# Frontend
+seismap-frontend/
+
+# Backup dan temporary files
+backups/
+.seismap_backup*/
+.tmp.*/
+*.bak
+*.bkp
+*.zip
+
+# System files
+.DS_Store
+
+# Generated files
+var/
+
+# Local editor configuration
+.vscode/
+
+# Backup files
+*.bak-*
+*.backup
+
+# Experiment outputs
+job_*_experiments.csv
+job_*_full.csv
+job_*_detail.json
+
+# Patch artifacts
+*.patch

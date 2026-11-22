@@ -1,0 +1,77 @@
+{
+  "dataset_id": 1,
+  "job_id": 25,
+  "source": "original Job #25 K-distance CSV and JSON artifacts",
+  "recomputed_knn": false,
+  "recomputed_knee": false,
+  "visualization_windows": [
+    "100%",
+    "last_10%",
+    "last_1%"
+  ],
+  "curves": [
+    {
+      "min_samples": 4,
+      "point_count": 59847,
+      "source_csv_sha256": "3265a9a9d5ac49c680e13a86ea63182978965f9d2a5f7478f34d225abac78e1f",
+      "knee_rank_1_based": 59586,
+      "knee_percentile": 99.56388791418117,
+      "epsilon_km": 54.58999725393145,
+      "points_after_knee": 261,
+      "min_km": 0.125530645149,
+      "max_km": 780.780412043,
+      "tail_percentiles_km": {
+        "50": 3.67437080198,
+        "90": 11.7771024254,
+        "95": 16.96661707311,
+        "98": 26.88774192429601,
+        "99": 36.90377247064,
+        "99.5": 50.97136560160759,
+        "99.9": 160.65418625805688
+      },
+      "plot": "minpts_4_upper_tail.png"
+    },
+    {
+      "min_samples": 5,
+      "point_count": 59847,
+      "source_csv_sha256": "d7d8a7997c28560c5a6fa27e030797f6e72a56e6b5e2700742227b464e18adac",
+      "knee_rank_1_based": 59608,
+      "knee_percentile": 99.60064831988237,
+      "epsilon_km": 64.63921380890253,
+      "points_after_knee": 239,
+      "min_km": 0.14668748101,
+      "max_km": 793.619718669,
+      "tail_percentiles_km": {
+        "50": 4.35278306552,
+        "90": 13.53530104316,
+        "95": 19.5480594657,
+        "98": 30.79109967964402,
+        "99": 42.10180241742003,
+        "99.5": 57.586832495550745,
+        "99.9": 180.47683940534603
+      },
+      "plot": "minpts_5_upper_tail.png"
+    },
+    {
+      "min_samples": 6,
+      "point_count": 59847,
+      "source_csv_sha256": "76ed2a00847af298ac1c13c23513e2e0f66ef13f0e62f7f2b9fdb60f28b4cc43",
+      "knee_rank_1_based": 59565,
+      "knee_percentile": 99.52879843601184,
+      "epsilon_km": 68.07421222536465,
+      "points_after_knee": 282,
+      "min_km": 0.228652849416,
+      "max_km": 871.786004127,
+      "tail_percentiles_km": {
+        "50": 4.94537079738,
+        "90": 15.216749894220001,
+        "95": 21.72220705991999,
+        "98": 34.23307118844803,
+        "99": 46.07488495491606,
+        "99.5": 65.90794868365057,
+        "99.9": 202.6199890994128
+      },
+      "plot": "minpts_6_upper_tail.png"
+    }
+  ]
+}

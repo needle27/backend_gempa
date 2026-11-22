@@ -1,0 +1,13 @@
+SEISMAP v0.4.4 — TypeScript nullability fix
+
+Perubahan:
+- FinalDbscanPage.tsx: memberi pesan cadangan saat jobState.error bernilai null sebelum memanggil friendlyErrorMessage().
+
+Pemasangan:
+1. Ekstrak ZIP dari folder induk yang berisi folder seismap-frontend:
+   unzip -o ~/Downloads/seismap-v044-ts-null-fix.zip -d .
+2. Dari folder seismap-frontend jalankan:
+   npm run typecheck
+   npm run build
+
+Hanya satu file source yang diubah. Tidak ada perubahan backend, API, atau konfigurasi.
