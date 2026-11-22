@@ -41,3 +41,13 @@ job_*_detail.json
 
 # Patch artifacts
 *.patch
+
+# Allow SeisMap frontend in this repository
+!seismap-frontend/
+
+# Frontend generated files and dependencies
+seismap-frontend/**/node_modules/
+seismap-frontend/**/dist/
+seismap-frontend/**/.env
+seismap-frontend/**/.env.*
+!seismap-frontend/**/.env.example

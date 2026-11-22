@@ -1,0 +1,1756 @@
+openapi: 3.1.0
+info:
+  title: Backend WebGIS Gempa Bumi — DBSCAN API
+  version: '4.1'
+  description: Kontrak API berdasarkan source BE 4.1. Base URL pengembangan.
+servers:
+- url: http://127.0.0.1:5000
+  description: Local development
+tags:
+- name: Health
+- name: Authentication
+- name: Admin Dataset
+- name: Admin Jobs
+- name: Admin Runs
+- name: Admin Support
+- name: Public WebGIS
+- name: BMKG Realtime
+paths:
+  /api/health:
+    get:
+      operationId: healthLiveness
+      summary: Liveness check
+      tags:
+      - Health
+      description: Memastikan proses Flask hidup; tidak memeriksa dependency.
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+  /api/health/ready:
+    get:
+      operationId: healthReadiness
+      summary: Readiness check
+      tags:
+      - Health
+      description: Memeriksa koneksi PostgreSQL dan Redis.
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '503':
+          description: Satu atau lebih dependency belum siap.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+  /api/auth/login:
+    post:
+      operationId: authLogin
+      summary: Login admin
+      tags:
+      - Authentication
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Kredensial tidak valid atau akun terkunci.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '422':
+          description: Email/username dan password wajib.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+  /api/auth/refresh:
+    post:
+      operationId: authRefresh
+      summary: Refresh access cookie
+      tags:
+      - Authentication
+      description: Menggunakan refresh_token_cookie dan csrf_refresh_token.
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Refresh cookie tidak valid/tidak ada.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Nilai csrf_access_token atau csrf_refresh_token sesuai endpoint.
+      security:
+      - refreshCookie: []
+  /api/auth/logout:
+    post:
+      operationId: authLogout
+      summary: Logout
+      tags:
+      - Authentication
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Access cookie tidak valid/tidak ada.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Nilai csrf_access_token atau csrf_refresh_token sesuai endpoint.
+      security: &id001
+      - accessCookie: []
+  /api/auth/me:
+    get:
+      operationId: authMe
+      summary: Identitas pengguna aktif
+      tags:
+      - Authentication
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Access cookie tidak valid/tidak ada.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      security: *id001
+  /api/admin/datasets:
+    get:
+      operationId: listDatasets
+      summary: Daftar dataset
+      tags:
+      - Admin Dataset
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '422':
+          description: Query tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          description: Status dataset; dibandingkan dalam uppercase.
+      security: *id001
+    post:
+      operationId: uploadDataset
+      summary: Upload CSV bersih
+      tags:
+      - Admin Dataset
+      description: Import CSV bersih; request memakai multipart/form-data.
+      responses:
+        '201':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '409':
+          description: Hash dataset sudah terdaftar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '413':
+          description: File terlalu besar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '415':
+          description: Ekstensi bukan CSV.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '422':
+          description: CSV atau metadata tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '500':
+          description: Upload/import gagal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Nilai csrf_access_token atau csrf_refresh_token sesuai endpoint.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              - dataset_name
+              - source_name
+              properties:
+                file:
+                  type: string
+                  format: binary
+                dataset_name:
+                  type: string
+                source_name:
+                  type: string
+                source_url:
+                  type: string
+                preprocessing_version:
+                  type: string
+      security: *id001
+  /api/admin/datasets/validate:
+    post:
+      operationId: validateDataset
+      summary: Dry-run validasi CSV
+      tags:
+      - Admin Dataset
+      description: Tidak membuat dataset atau menyimpan file permanen; audit event validasi tetap dicatat.
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '409':
+          description: SHA-256 sudah terdaftar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '413':
+          description: File terlalu besar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '415':
+          description: Bukan CSV.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '422':
+          description: CSV tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '500':
+          description: Validasi gagal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Nilai csrf_access_token atau csrf_refresh_token sesuai endpoint.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      security: *id001
+  /api/admin/datasets/{dataset_id}:
+    get:
+      operationId: getDatasetDetail
+      summary: Detail dataset
+      tags:
+      - Admin Dataset
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Dataset tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: dataset_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      security: *id001
+  /api/admin/datasets/{dataset_id}/parameter-search:
+    post:
+      operationId: startParameterSearch
+      summary: Jadwalkan parameter search
+      tags:
+      - Admin Dataset
+      description: ''
+      responses:
+        '202':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Dataset tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '409':
+          description: Dataset belum READY atau job masih berjalan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '422':
+          description: Parameter tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '503':
+          description: Task tidak dapat dijadwalkan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: dataset_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Nilai csrf_access_token atau csrf_refresh_token sesuai endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParameterSearchRequest'
+      security: *id001
+  /api/admin/jobs/{job_id}:
+    get:
+      operationId: getJob
+      summary: Status job
+      tags:
+      - Admin Jobs
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Job tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      security: *id001
+  /api/admin/jobs/{job_id}/experiments:
+    get:
+      operationId: getJobExperiments
+      summary: Eksperimen dari job
+      tags:
+      - Admin Jobs
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Job tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      security: *id001
+  /api/admin/datasets/{dataset_id}/runs:
+    get:
+      operationId: listDatasetRuns
+      summary: Riwayat run dataset
+      tags:
+      - Admin Runs
+      description: Route saat ini mengembalikan maksimum 200 run; tidak menerima page/limit.
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Dataset tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: dataset_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      security: *id001
+    post:
+      operationId: createFinalRun
+      summary: Buat final clustering run
+      tags:
+      - Admin Runs
+      description: DBSCAN memakai latitude dan longitude dengan metric Haversine. Epsilon dan MinPts diambil dari eksperimen terpilih; kedalaman hanya dipakai untuk profiling setelah clustering.
+      responses:
+        '202':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Dataset/eksperimen tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '409':
+          description: Dataset belum siap, eksperimen tidak valid, atau job aktif.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '422':
+          description: Threshold tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '503':
+          description: Task tidak dapat dijadwalkan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: dataset_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Nilai csrf_access_token atau csrf_refresh_token sesuai endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalRunRequest'
+      security: *id001
+  /api/admin/runs/{run_id}:
+    get:
+      operationId: getRunDetail
+      summary: Detail run
+      tags:
+      - Admin Runs
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Run tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      security: *id001
+  /api/admin/runs/{run_id}/activate:
+    post:
+      operationId: activateRun
+      summary: Aktifkan run
+      tags:
+      - Admin Runs
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Run tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '409':
+          description: Run tidak dapat diaktifkan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Nilai csrf_access_token atau csrf_refresh_token sesuai endpoint.
+      security: *id001
+  /api/admin/audit-logs:
+    get:
+      operationId: listAuditLogs
+      summary: Daftar audit log
+      tags:
+      - Admin Support
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErrorEnvelope'
+                - $ref: '#/components/schemas/JwtMessageEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '403':
+          description: Admin required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '422':
+          description: Query tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: action
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Partial case-insensitive match.
+      - name: entity_type
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Partial case-insensitive match.
+      - name: entity_id
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      - name: user_id
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      - name: created_after
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: created_before
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 120
+        description: Search action, entity_type, username, email.
+      security: *id001
+  /api/metadata:
+    get:
+      operationId: getMetadata
+      summary: Metadata dataset dan run aktif
+      tags:
+      - Public WebGIS
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Belum ada hasil DBSCAN yang dipublikasikan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+  /api/summary:
+    get:
+      operationId: getSummary
+      summary: Ringkasan hasil DBSCAN
+      tags:
+      - Public WebGIS
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Belum ada hasil DBSCAN yang dipublikasikan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+  /api/profil:
+    get:
+      operationId: getProfiles
+      summary: Profil klaster
+      tags:
+      - Public WebGIS
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Belum ada hasil DBSCAN yang dipublikasikan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+  /api/gempa:
+    get:
+      operationId: getEarthquakes
+      summary: Titik gempa dan label klaster
+      tags:
+      - Public WebGIS
+      description: ''
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '404':
+          description: Belum ada run aktif.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '422':
+          description: Query/bounding box tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5000
+          default: 1000
+      - name: cluster_id
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: -1 untuk noise.
+      - name: min_lat
+        in: query
+        required: false
+        schema:
+          type: number
+      - name: max_lat
+        in: query
+        required: false
+        schema:
+          type: number
+      - name: min_lon
+        in: query
+        required: false
+        schema:
+          type: number
+      - name: max_lon
+        in: query
+        required: false
+        schema:
+          type: number
+  /api/realtime/latest:
+    get:
+      operationId: getRealtimeLatest
+      summary: Gempa terbaru BMKG
+      tags:
+      - BMKG Realtime
+      description: Read-only feed BMKG; response memuat cache_status dan is_stale.
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '429':
+          description: Rate limit 20 request/menit/IP.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '503':
+          description: Upstream BMKG tidak tersedia dan tidak ada stale cache.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+  /api/realtime/m5:
+    get:
+      operationId: getRealtimeM5
+      summary: Feed gempa M5+ BMKG
+      tags:
+      - BMKG Realtime
+      description: Read-only feed BMKG; response memuat cache_status dan is_stale.
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '429':
+          description: Rate limit 20 request/menit/IP.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '503':
+          description: Upstream BMKG tidak tersedia dan tidak ada stale cache.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+  /api/realtime/felt:
+    get:
+      operationId: getRealtimeFelt
+      summary: Feed gempa dirasakan BMKG
+      tags:
+      - BMKG Realtime
+      description: Read-only feed BMKG; response memuat cache_status dan is_stale.
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '429':
+          description: Rate limit 20 request/menit/IP.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+        '503':
+          description: Upstream BMKG tidak tersedia dan tidak ada stale cache.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: Correlation ID.
+components:
+  securitySchemes:
+    accessCookie:
+      type: apiKey
+      in: cookie
+      name: access_token_cookie
+      description: JWT access cookie. Request mutasi juga memerlukan X-CSRF-TOKEN.
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token_cookie
+      description: JWT refresh cookie; refresh request memakai CSRF cookie refresh.
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data: {}
+        meta:
+          type: object
+          required:
+          - status
+          properties:
+            status:
+              const: success
+            count:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+    ErrorEnvelope:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: 'null'
+        meta:
+          type: object
+          required:
+          - status
+          - code
+          - message
+          - details
+          properties:
+            status:
+              const: error
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+    LoginRequest:
+      type: object
+      required:
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+      description: Salah satu dari email atau username wajib diisi.
+    ParameterSearchRequest:
+      type: object
+      required:
+      - min_samples_candidates
+      properties:
+        min_samples_candidates:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 2
+        sensitivity_percentages:
+          type: array
+          items:
+            type: number
+          default:
+          - -20
+          - -10
+          - 0
+          - 10
+          - 20
+        eps_candidates_km:
+          type:
+          - array
+          - 'null'
+          items:
+            type: number
+            exclusiveMinimum: 0
+          description: Jika tidak diberikan/null, epsilon dihitung dari k-distance knee dan sensitivity percentages.
+    FinalRunRequest:
+      type: object
+      required:
+      - experiment_id
+      properties:
+        experiment_id:
+          type: integer
+          minimum: 1
+      description: Backend mengambil epsilon dan MinPts dari eksperimen terpilih. DBSCAN menggunakan latitude dan longitude dengan metric Haversine; kedalaman hanya digunakan untuk profiling pascaklasterisasi.
+    BMKGEvent:
+      type: object
+      properties:
+        event_time_utc:
+          type:
+          - string
+          - 'null'
+        date_local:
+          type:
+          - string
+          - 'null'
+        time_local:
+          type:
+          - string
+          - 'null'
+        magnitude:
+          type: number
+        depth_km:
+          type:
+          - number
+          - 'null'
+        latitude:
+          type: number
+        longitude:
+          type: number
+        coordinates:
+          type: array
+          items:
+            type: number
+          minItems: 2
+          maxItems: 2
+        region:
+          type:
+          - string
+          - 'null'
+        tsunami_potential:
+          type:
+          - string
+          - 'null'
+        tsunami_potential_raw:
+          type:
+          - string
+          - 'null'
+        felt:
+          type:
+          - string
+          - 'null'
+        shakemap_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+    DatasetValidationData:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        persisted:
+          type: boolean
+          const: false
+        filename:
+          type: string
+        file_hash_sha256:
+          type: string
+        row_count:
+          type: integer
+        required_columns:
+          type: array
+          items:
+            type: string
+        rules:
+          type: object
+          additionalProperties: true
+    JwtMessageEnvelope:
+      type: object
+      required:
+      - msg
+      properties:
+        msg:
+          type: string
+      description: Bentuk error default Flask-JWT-Extended yang terlihat pada beberapa kegagalan cookie/token.
