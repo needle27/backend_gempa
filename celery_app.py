@@ -10,6 +10,14 @@ def create_celery_app(flask_app) -> Celery:
     broker_url = str(flask_app.config.get("CELERY_BROKER_URL", ""))
     backend_url = str(flask_app.config.get("CELERY_RESULT_BACKEND", ""))
 
+    if broker_url.startswith("rediss://") and "ssl_cert_reqs" not in broker_url:
+        sep = "&" if "?" in broker_url else "?"
+        broker_url = f"{broker_url}{sep}ssl_cert_reqs=CERT_NONE"
+
+    if backend_url.startswith("rediss://") and "ssl_cert_reqs" not in backend_url:
+        sep = "&" if "?" in backend_url else "?"
+        backend_url = f"{backend_url}{sep}ssl_cert_reqs=CERT_NONE"
+
     conf_updates = {
         "broker_url": broker_url,
         "result_backend": backend_url,

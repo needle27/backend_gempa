@@ -45,9 +45,9 @@ def create_app(config_name: str | Mapping[str, Any] | None = None) -> Flask:
         app,
         origins=app.config["FRONTEND_ORIGINS"],
         supports_credentials=True,
-        allow_headers=["Content-Type", "X-CSRF-TOKEN", "X-Request-ID"],
+        allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN", "X-Request-ID"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        expose_headers=["X-Request-ID"],
+        expose_headers=["X-Request-ID", "X-CSRF-TOKEN"],
     )
 
     redis_kwargs: dict[str, Any] = {

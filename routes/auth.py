@@ -52,6 +52,8 @@ def login():
                 "username": user.username,
                 "role": user.role,
             },
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "csrf_token": csrf_access,
             "csrf_refresh_token": csrf_refresh,
         }
@@ -88,6 +90,7 @@ def refresh():
         {
             "user_id": user.id,
             "message": "Access token diperbarui.",
+            "access_token": new_access_token,
             "csrf_token": csrf_access,
         }
     )
@@ -97,7 +100,7 @@ def refresh():
 
 
 @auth_bp.post("/logout")
-@jwt_required()
+@jwt_required(optional=True)
 def logout():
     try:
         user_id = int(get_jwt_identity())

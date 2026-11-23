@@ -10,6 +10,55 @@ function readCookie(name: string): string | undefined {
 }
 
 const memoryCsrfTokens: Record<string, string> = {};
+let memoryAccessToken: string | undefined;
+let memoryRefreshToken: string | undefined;
+
+export function setAuthTokens(tokens: { accessToken?: string; refreshToken?: string }): void {
+  if (tokens.accessToken !== undefined) {
+    memoryAccessToken = tokens.accessToken || undefined;
+    try {
+      if (tokens.accessToken) {
+        window?.sessionStorage?.setItem('seismap:access_token', tokens.accessToken);
+      } else {
+        window?.sessionStorage?.removeItem('seismap:access_token');
+      }
+    } catch {}
+  }
+  if (tokens.refreshToken !== undefined) {
+    memoryRefreshToken = tokens.refreshToken || undefined;
+    try {
+      if (tokens.refreshToken) {
+        window?.sessionStorage?.setItem('seismap:refresh_token', tokens.refreshToken);
+      } else {
+        window?.sessionStorage?.removeItem('seismap:refresh_token');
+      }
+    } catch {}
+  }
+}
+
+export function getAccessToken(): string | undefined {
+  if (memoryAccessToken) return memoryAccessToken;
+  try {
+    const fromStorage = window?.sessionStorage?.getItem('seismap:access_token');
+    if (fromStorage) return fromStorage;
+  } catch {}
+  return undefined;
+}
+
+export function getRefreshToken(): string | undefined {
+  if (memoryRefreshToken) return memoryRefreshToken;
+  try {
+    const fromStorage = window?.sessionStorage?.getItem('seismap:refresh_token');
+    if (fromStorage) return fromStorage;
+  } catch {}
+  return undefined;
+}
+
+export function clearAuthTokens(): void {
+  setAuthTokens({ accessToken: '', refreshToken: '' });
+  setCsrfToken(CSRF_COOKIE_NAME, undefined);
+  setCsrfToken(CSRF_REFRESH_COOKIE_NAME, undefined);
+}
 
 export function setCsrfToken(name: string, token: string | undefined): void {
   if (!name) return;
@@ -33,9 +82,15 @@ export function getCsrfToken(name: string): string | undefined {
   return undefined;
 }
 
+export function hasSessionCredential(type: 'access' | 'refresh' = 'access'): boolean {
+  if (type === 'refresh') {
+    return Boolean(getRefreshToken() || getCsrfToken(CSRF_REFRESH_COOKIE_NAME));
+  }
+  return Boolean(getAccessToken() || getCsrfToken(CSRF_COOKIE_NAME));
+}
+
 export function hasCsrfCookie(type: 'access' | 'refresh' = 'access'): boolean {
-  const name = type === 'refresh' ? CSRF_REFRESH_COOKIE_NAME : CSRF_COOKIE_NAME;
-  return Boolean(getCsrfToken(name));
+  return hasSessionCredential(type);
 }
 
 export interface RequestOptions extends RequestInit {
@@ -86,11 +141,19 @@ async function parseResponse<T>(response: Response, path: string): Promise<ApiEn
   }
   const bodyObj = body as Record<string, unknown> | null;
   const bodyData = (envelope.data ?? bodyObj?.data) as Record<string, unknown> | null;
-  if (bodyData && typeof bodyData.csrf_token === 'string') {
-    setCsrfToken(CSRF_COOKIE_NAME, bodyData.csrf_token);
-  }
-  if (bodyData && typeof bodyData.csrf_refresh_token === 'string') {
-    setCsrfToken(CSRF_REFRESH_COOKIE_NAME, bodyData.csrf_refresh_token);
+  if (bodyData) {
+    if (typeof bodyData.access_token === 'string') {
+      setAuthTokens({ accessToken: bodyData.access_token });
+    }
+    if (typeof bodyData.refresh_token === 'string') {
+      setAuthTokens({ refreshToken: bodyData.refresh_token });
+    }
+    if (typeof bodyData.csrf_token === 'string') {
+      setCsrfToken(CSRF_COOKIE_NAME, bodyData.csrf_token);
+    }
+    if (typeof bodyData.csrf_refresh_token === 'string') {
+      setCsrfToken(CSRF_REFRESH_COOKIE_NAME, bodyData.csrf_refresh_token);
+    }
   }
 
   return envelope as ApiEnvelope<T>;
@@ -104,6 +167,11 @@ async function sendOnce<T>(path: string, options: RequestOptions = {}): Promise<
 
   if (typeof init.body === 'string' && !nextHeaders.has('Content-Type')) {
     nextHeaders.set('Content-Type', 'application/json');
+  }
+
+  const tokenToUse = csrf === 'refresh' ? getRefreshToken() : getAccessToken();
+  if (tokenToUse && !nextHeaders.has('Authorization')) {
+    nextHeaders.set('Authorization', `Bearer ${tokenToUse}`);
   }
 
   if (csrf !== false && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
@@ -132,13 +200,18 @@ export async function apiRequestEnvelope<T>(path: string, options: RequestOption
   try {
     return await sendOnce<T>(path, options);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401 && path.startsWith('/api/admin/')) {
-      try {
-        await sendOnce<unknown>('/api/auth/refresh', { method: 'POST', csrf: 'refresh' });
-        return await sendOnce<T>(path, options);
-      } catch {
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('seismap:auth-expired'));
-        throw error;
+    if (error instanceof ApiError && error.status === 401 && (path.startsWith('/api/admin/') || path === '/api/auth/me')) {
+      const refreshToken = getRefreshToken();
+      const hasRefresh = refreshToken || hasCsrfCookie('refresh');
+      if (hasRefresh) {
+        try {
+          await sendOnce<unknown>('/api/auth/refresh', { method: 'POST', csrf: 'refresh' });
+          return await sendOnce<T>(path, options);
+        } catch {
+          clearAuthTokens();
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('seismap:auth-expired'));
+          throw error;
+        }
       }
     }
     throw error;

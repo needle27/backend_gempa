@@ -191,8 +191,8 @@ export function friendlyErrorMessage(message: string, code?: string, status?: nu
   if (/experiment.*not found/.test(normalized)) return ERROR_LABELS.EXPERIMENT_NOT_FOUND;
   if (/dataset.*not ready/.test(normalized)) return ERROR_LABELS.DATASET_NOT_READY;
   if (/no valid experiment/.test(normalized)) return ERROR_LABELS.NO_VALID_EXPERIMENTS;
-  if (/missing cookie|csrf.*missing/.test(normalized)) return ERROR_LABELS.CSRF_COOKIE_MISSING;
-  if (/unauthorized|missing.*access token|token has expired/.test(normalized) || status === 401) return ERROR_LABELS.UNAUTHORIZED;
+  if (/missing.*csrf|csrf.*missing/.test(normalized)) return ERROR_LABELS.CSRF_COOKIE_MISSING;
+  if (/unauthorized|missing.*access token|missing.*cookie|token has expired/.test(normalized) || status === 401) return ERROR_LABELS.UNAUTHORIZED;
   if (/forbidden|permission denied/.test(normalized) || status === 403) return ERROR_LABELS.FORBIDDEN;
   if (/not found|requested url was not found/.test(normalized) || status === 404) return ERROR_LABELS.NOT_FOUND;
   if (status === 422) return 'Data belum memenuhi aturan pemeriksaan. Periksa kembali isian Anda.';

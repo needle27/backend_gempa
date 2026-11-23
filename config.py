@@ -64,7 +64,7 @@ class BaseConfig:
 
     ACCESS_TOKEN_MINUTES = int(os.getenv("ACCESS_TOKEN_MINUTES", "15"))
     REFRESH_TOKEN_DAYS = int(os.getenv("REFRESH_TOKEN_DAYS", "7"))
-    JWT_TOKEN_LOCATION = ["cookies"]
+    JWT_TOKEN_LOCATION = ["headers", "cookies"]
     JWT_COOKIE_HTTPONLY = True
     _is_vercel_or_prod = bool(os.getenv("VERCEL")) or os.getenv("APP_ENV", "").lower() == "production"
     JWT_COOKIE_SECURE = _as_bool(os.getenv("JWT_COOKIE_SECURE"), default=_is_vercel_or_prod)

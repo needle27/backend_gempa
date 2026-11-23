@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { ApiError } from '../types/api';
 import type { AdminUser } from '../types/domain';
 import { IS_PREVIEW_MODE } from '../config/env';
-import { hasCsrfCookie } from '../api/client';
+import { hasCsrfCookie, clearAuthTokens } from '../api/client';
 import { getCurrentUser, login as loginRequest, logout as logoutRequest, refreshSession } from '../api/auth';
 
 interface AuthContextValue {
@@ -63,7 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (IS_PREVIEW_MODE) return;
-    await logoutRequest();
+    try {
+      await logoutRequest();
+    } catch {}
+    clearAuthTokens();
     setUser(null);
   }, []);
 
