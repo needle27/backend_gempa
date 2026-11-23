@@ -50,11 +50,17 @@ def create_app(config_name: str | Mapping[str, Any] | None = None) -> Flask:
         expose_headers=["X-Request-ID"],
     )
 
+    redis_kwargs: dict[str, Any] = {
+        "decode_responses": True,
+        "socket_connect_timeout": app.config["REDIS_CONNECT_TIMEOUT_SECONDS"],
+        "socket_timeout": app.config["REDIS_SOCKET_TIMEOUT_SECONDS"],
+    }
+    if str(app.config.get("REDIS_URL", "")).startswith("rediss://"):
+        redis_kwargs["ssl_cert_reqs"] = None
+
     redis_client = Redis.from_url(
         app.config["REDIS_URL"],
-        decode_responses=True,
-        socket_connect_timeout=app.config["REDIS_CONNECT_TIMEOUT_SECONDS"],
-        socket_timeout=app.config["REDIS_SOCKET_TIMEOUT_SECONDS"],
+        **redis_kwargs,
     )
     app.extensions["redis"] = redis_client
 

@@ -2,29 +2,40 @@
 
 from __future__ import annotations
 
+import ssl
 from celery import Celery, Task
 
 
 def create_celery_app(flask_app) -> Celery:
+    broker_url = str(flask_app.config.get("CELERY_BROKER_URL", ""))
+    backend_url = str(flask_app.config.get("CELERY_RESULT_BACKEND", ""))
+
+    conf_updates = {
+        "broker_url": broker_url,
+        "result_backend": backend_url,
+        "task_track_started": flask_app.config["CELERY_TASK_TRACK_STARTED"],
+        "task_acks_late": flask_app.config["CELERY_TASK_ACKS_LATE"],
+        "worker_prefetch_multiplier": flask_app.config["CELERY_WORKER_PREFETCH_MULTIPLIER"],
+        "task_serializer": flask_app.config["CELERY_TASK_SERIALIZER"],
+        "result_serializer": flask_app.config["CELERY_RESULT_SERIALIZER"],
+        "accept_content": flask_app.config["CELERY_ACCEPT_CONTENT"],
+        "timezone": flask_app.config["CELERY_TIMEZONE"],
+        "enable_utc": flask_app.config["CELERY_ENABLE_UTC"],
+        "task_always_eager": flask_app.config.get("CELERY_TASK_ALWAYS_EAGER", False),
+        "task_eager_propagates": flask_app.config.get("CELERY_TASK_EAGER_PROPAGATES", False),
+    }
+
+    if broker_url.startswith("rediss://"):
+        conf_updates["broker_use_ssl"] = {"ssl_cert_reqs": ssl.CERT_NONE}
+    if backend_url.startswith("rediss://"):
+        conf_updates["redis_backend_use_ssl"] = {"ssl_cert_reqs": ssl.CERT_NONE}
+
     celery = Celery(
         flask_app.import_name,
-        broker=flask_app.config["CELERY_BROKER_URL"],
-        backend=flask_app.config["CELERY_RESULT_BACKEND"],
+        broker=broker_url,
+        backend=backend_url,
     )
-    celery.conf.update(
-        broker_url=flask_app.config["CELERY_BROKER_URL"],
-        result_backend=flask_app.config["CELERY_RESULT_BACKEND"],
-        task_track_started=flask_app.config["CELERY_TASK_TRACK_STARTED"],
-        task_acks_late=flask_app.config["CELERY_TASK_ACKS_LATE"],
-        worker_prefetch_multiplier=flask_app.config["CELERY_WORKER_PREFETCH_MULTIPLIER"],
-        task_serializer=flask_app.config["CELERY_TASK_SERIALIZER"],
-        result_serializer=flask_app.config["CELERY_RESULT_SERIALIZER"],
-        accept_content=flask_app.config["CELERY_ACCEPT_CONTENT"],
-        timezone=flask_app.config["CELERY_TIMEZONE"],
-        enable_utc=flask_app.config["CELERY_ENABLE_UTC"],
-        task_always_eager=flask_app.config.get("CELERY_TASK_ALWAYS_EAGER", False),
-        task_eager_propagates=flask_app.config.get("CELERY_TASK_EAGER_PROPAGATES", False),
-    )
+    celery.conf.update(**conf_updates)
 
     class FlaskContextTask(Task):
         abstract = True
