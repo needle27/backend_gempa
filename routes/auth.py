@@ -4,6 +4,7 @@ from flask import Blueprint, current_app, request
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
+    get_csrf_token,
     get_jwt_identity,
     jwt_required,
     set_access_cookies,
@@ -41,6 +42,8 @@ def login():
 
     access_token = create_access_token(identity=str(user.id))
     refresh_token = create_refresh_token(identity=str(user.id))
+    csrf_access = get_csrf_token(access_token)
+    csrf_refresh = get_csrf_token(refresh_token)
     response, status_code = success(
         {
             "user": {
@@ -48,9 +51,12 @@ def login():
                 "email": user.email,
                 "username": user.username,
                 "role": user.role,
-            }
+            },
+            "csrf_token": csrf_access,
+            "csrf_refresh_token": csrf_refresh,
         }
     )
+    response.headers["X-CSRF-TOKEN"] = csrf_access
     set_access_cookies(response, access_token)
     set_refresh_cookies(response, refresh_token)
     AuditService().record(
@@ -76,10 +82,17 @@ def refresh():
     if user is None or not user.is_active:
         return error(message="Akun tidak aktif.", code="AUTH_REQUIRED", status_code=401)
 
+    new_access_token = create_access_token(identity=str(user.id))
+    csrf_access = get_csrf_token(new_access_token)
     response, status_code = success(
-        {"user_id": user.id, "message": "Access token diperbarui."}
+        {
+            "user_id": user.id,
+            "message": "Access token diperbarui.",
+            "csrf_token": csrf_access,
+        }
     )
-    set_access_cookies(response, create_access_token(identity=str(user.id)))
+    response.headers["X-CSRF-TOKEN"] = csrf_access
+    set_access_cookies(response, new_access_token)
     return response, status_code
 
 

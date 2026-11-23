@@ -9,9 +9,33 @@ function readCookie(name: string): string | undefined {
   return entry ? decodeURIComponent(entry.slice(prefix.length)) : undefined;
 }
 
+const memoryCsrfTokens: Record<string, string> = {};
+
+export function setCsrfToken(name: string, token: string | undefined): void {
+  if (!name) return;
+  if (token) {
+    memoryCsrfTokens[name] = token;
+    try { window?.sessionStorage?.setItem(`seismap:${name}`, token); } catch {}
+  } else {
+    delete memoryCsrfTokens[name];
+    try { window?.sessionStorage?.removeItem(`seismap:${name}`); } catch {}
+  }
+}
+
+export function getCsrfToken(name: string): string | undefined {
+  const fromCookie = readCookie(name);
+  if (fromCookie) return fromCookie;
+  if (memoryCsrfTokens[name]) return memoryCsrfTokens[name];
+  try {
+    const fromStorage = window?.sessionStorage?.getItem(`seismap:${name}`);
+    if (fromStorage) return fromStorage;
+  } catch {}
+  return undefined;
+}
+
 export function hasCsrfCookie(type: 'access' | 'refresh' = 'access'): boolean {
   const name = type === 'refresh' ? CSRF_REFRESH_COOKIE_NAME : CSRF_COOKIE_NAME;
-  return Boolean(readCookie(name));
+  return Boolean(getCsrfToken(name));
 }
 
 export interface RequestOptions extends RequestInit {
@@ -55,6 +79,20 @@ async function parseResponse<T>(response: Response, path: string): Promise<ApiEn
   if (!envelope || !('data' in envelope) || !meta) {
     throw new ApiError('Format data dari server tidak sesuai. Silakan coba lagi.', response.status, 'INVALID_RESPONSE', undefined, requestId);
   }
+
+  const csrfHeader = response.headers.get('X-CSRF-TOKEN');
+  if (csrfHeader) {
+    setCsrfToken(CSRF_COOKIE_NAME, csrfHeader);
+  }
+  const bodyObj = body as Record<string, unknown> | null;
+  const bodyData = (envelope.data ?? bodyObj?.data) as Record<string, unknown> | null;
+  if (bodyData && typeof bodyData.csrf_token === 'string') {
+    setCsrfToken(CSRF_COOKIE_NAME, bodyData.csrf_token);
+  }
+  if (bodyData && typeof bodyData.csrf_refresh_token === 'string') {
+    setCsrfToken(CSRF_REFRESH_COOKIE_NAME, bodyData.csrf_refresh_token);
+  }
+
   return envelope as ApiEnvelope<T>;
 }
 
@@ -70,15 +108,10 @@ async function sendOnce<T>(path: string, options: RequestOptions = {}): Promise<
 
   if (csrf !== false && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     const cookieName = csrf === 'refresh' ? CSRF_REFRESH_COOKIE_NAME : CSRF_COOKIE_NAME;
-    const token = readCookie(cookieName);
-    if (!token) {
-      throw new ApiError(
-        'Sesi keamanan belum siap. Muat ulang aplikasi atau masuk kembali sebelum mengulangi tindakan.',
-        0,
-        'CSRF_COOKIE_MISSING',
-      );
+    const token = getCsrfToken(cookieName);
+    if (token) {
+      nextHeaders.set('X-CSRF-TOKEN', token);
     }
-    nextHeaders.set('X-CSRF-TOKEN', token);
   }
 
   let response: Response;
