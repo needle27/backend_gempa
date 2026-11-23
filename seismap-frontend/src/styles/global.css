@@ -3204,3 +3204,254 @@ body { overflow-x: hidden; color: var(--text); font-size: 14px; line-height: 1.5
 .metric-tooltip[data-tip]:hover::after {
   opacity: 1;
 }
+
+/* ==========================================================================
+   Mobile Map Responsive Slide-Over Drawer & Floating Filter Button (< lg / < 1024px)
+   ========================================================================== */
+
+/* Tailwind v4 Utility Class Fallbacks */
+.h-\[100dvh\] { height: 100dvh; }
+.z-\[1050\] { z-index: 1050; }
+.z-\[1100\] { z-index: 1100; }
+.z-\[1200\] { z-index: 1200; }
+.bg-black\/40 { background-color: rgba(0, 0, 0, 0.4); }
+.w-\[85vw\] { width: 85vw; }
+.max-w-sm { max-width: 24rem; }
+.overscroll-contain { overscroll-behavior: contain; }
+
+@media (max-width: 1023.98px) {
+  /* Mobile map page full-screen layout */
+  .public-map-page .map-frame {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+  .public-map-page .map-main-panel {
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    position: relative !important;
+  }
+  .public-map-page .map-toolbar {
+    display: none !important; /* Filters moved into Slide-Over Drawer */
+  }
+  .public-map-page .map-page-layout {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  /* Slide-Over Drawer on mobile (< lg) */
+  .public-map-page .map-side-panel.map-drawer-mobile {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 85vw !important;
+    max-width: 24rem !important;
+    z-index: 1200 !important;
+    background: #0b1a2b !important;
+    border-right: 1px solid rgba(72, 215, 237, 0.2) !important;
+    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.65) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding: 20px 16px 40px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  .public-map-page .map-side-panel.map-drawer-mobile.-translate-x-full,
+  .public-map-page .map-side-panel.map-drawer-mobile.drawer-closed {
+    transform: translateX(-100%) !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+  .public-map-page .map-side-panel.map-drawer-mobile.translate-x-0,
+  .public-map-page .map-side-panel.map-drawer-mobile.drawer-open {
+    transform: translateX(0) !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+  }
+
+  /* Backdrop */
+  .map-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 1100;
+  }
+
+  /* Floating Filter Button (bottom-left) */
+  .map-floating-filter-btn {
+    position: fixed;
+    bottom: 1.25rem;
+    left: 1rem;
+    z-index: 1050;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    border-radius: 9999px;
+    background: rgba(11, 26, 43, 0.94);
+    border: 1px solid rgba(72, 215, 237, 0.45);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(72, 215, 237, 0.22);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #e6f4fc;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 150ms ease, box-shadow 150ms ease;
+  }
+  .map-floating-filter-btn:active {
+    transform: scale(0.96);
+  }
+  .map-floating-filter-btn .filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    background: #48d7ed;
+    color: #051421;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* Drawer Header */
+  .map-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .map-drawer-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #e6f4fc;
+  }
+  .map-drawer-title .filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    background: #48d7ed;
+    color: #051421;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .map-drawer-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #9bb2c8;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .map-drawer-close:hover,
+  .map-drawer-close:active {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+  }
+
+  /* Mobile Filter Controls inside Drawer */
+  .map-drawer-filters-mobile {
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(16, 35, 55, 0.7);
+    border: 1px solid rgba(72, 215, 237, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .drawer-filter-label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #70869c;
+    letter-spacing: 0.05em;
+  }
+  .drawer-filter-label select {
+    width: 100%;
+    padding: 9px 12px;
+    color: #dcebf8;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    outline: 0;
+    background: #102338;
+    font-size: 12px;
+  }
+  .drawer-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 4px;
+  }
+
+  /* Map Legend on mobile (< lg) */
+  .public-map-page .map-legend {
+    position: absolute;
+    bottom: 4.8rem;
+    left: 1rem;
+    right: 1rem;
+    z-index: 1000;
+    background: rgba(11, 26, 43, 0.9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 8px 12px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+  .public-map-page .map-all-points-note {
+    display: none;
+  }
+}
+
+/* Desktop styles (>= lg / >= 1024px) */
+@media (min-width: 1024px) {
+  .map-floating-filter-btn,
+  .map-drawer-backdrop,
+  .map-drawer-header,
+  .map-drawer-filters-mobile,
+  .lg\:hidden {
+    display: none !important;
+  }
+  .public-map-page .map-side-panel.map-drawer-mobile,
+  .lg\:static {
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: auto !important;
+    transform: none !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow-y: visible !important;
+    overscroll-behavior: auto !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+}

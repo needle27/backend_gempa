@@ -100,9 +100,9 @@ function MapPoints({ points, compact }: { points: ResearchEarthquake[]; compact:
   return null;
 }
 
-function ClusterMapView({ points, compact = false }: { points: ResearchEarthquake[]; compact?: boolean }) {
+function ClusterMapView({ points, compact = false, className = '' }: { points: ResearchEarthquake[]; compact?: boolean; className?: string }) {
   const center: [number, number] = [-2.5, 118];
-  return <div className={`map-frame ${compact ? 'map-compact' : ''}`}>
+  return <div className={`map-frame ${compact ? 'map-compact' : ''} ${className}`}>
     <MapContainer center={center} zoom={4} scrollWheelZoom={!compact} zoomControl={!compact} preferCanvas style={{ height: '100%', width: '100%' }}>
       <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <MapPoints points={points} compact={compact} />
