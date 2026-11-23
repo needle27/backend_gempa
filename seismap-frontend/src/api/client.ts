@@ -9,6 +9,11 @@ function readCookie(name: string): string | undefined {
   return entry ? decodeURIComponent(entry.slice(prefix.length)) : undefined;
 }
 
+export function hasCsrfCookie(type: 'access' | 'refresh' = 'access'): boolean {
+  const name = type === 'refresh' ? CSRF_REFRESH_COOKIE_NAME : CSRF_COOKIE_NAME;
+  return Boolean(readCookie(name));
+}
+
 export interface RequestOptions extends RequestInit {
   csrf?: 'access' | 'refresh' | false;
 }

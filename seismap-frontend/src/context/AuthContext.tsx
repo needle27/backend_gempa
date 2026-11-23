@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { ApiError } from '../types/api';
 import type { AdminUser } from '../types/domain';
 import { IS_PREVIEW_MODE } from '../config/env';
+import { hasCsrfCookie } from '../api/client';
 import { getCurrentUser, login as loginRequest, logout as logoutRequest, refreshSession } from '../api/auth';
 
 interface AuthContextValue {
@@ -26,6 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(current);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
+        // Jangan refresh sesi anonim tanpa CSRF refresh cookie.
+        if (!hasCsrfCookie('refresh')) {
+          setUser(null);
+          return;
+        }
+
         try {
           await refreshSession();
           setUser(await getCurrentUser());
