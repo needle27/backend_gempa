@@ -1,0 +1,9 @@
+
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://backend-gempa.vercel.app/api/$1"
+    }
+  ]
+}
