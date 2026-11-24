@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, BookOpen, CalendarRange, Compass, Layers3, Waves } from 'lucide-react';
 import { getClusterProfiles, getPublicMetadata, getPublicSummary } from '../../api/services';
-import { ClusterDistributionChart, ClusterShareChart, DepthAverageChart, DepthProfileChart, MagnitudeProfileChart } from '../../components/Charts';
+import {
+  ClusterDistributionChart,
+  ClusterScopeControl,
+  ClusterShareChart,
+  DepthAverageChart,
+  DepthProfileChart,
+  MagnitudeProfileChart,
+  formatClusterScopeSubtitle,
+  type ClusterChartScope,
+} from '../../components/Charts';
 import { GlassCard, PageHeader, SimulationTag, StatePanel, StatCard, formatNumber } from '../../components/ui';
 import { useResource } from '../../hooks/useResource';
 import { DEPTH_CATEGORY_COLORS } from '../../utils/clusterColors';
@@ -13,6 +22,9 @@ export function AnalysisPage() {
   const rows = profiles.data || [];
   const [profilePage, setProfilePage] = useState(1);
   const [profilePageSize, setProfilePageSize] = useState(10);
+  const [distScope, setDistScope] = useState<ClusterChartScope>('top10');
+  const [depthScope, setDepthScope] = useState<ClusterChartScope>('top10');
+  const [avgScope, setAvgScope] = useState<ClusterChartScope>('top10');
   const totalProfilePages = Math.max(1, Math.ceil(rows.length / profilePageSize));
   const safeProfilePage = Math.min(profilePage, totalProfilePages);
   const pageStartIndex = rows.length === 0 ? 0 : (safeProfilePage - 1) * profilePageSize;
@@ -22,6 +34,7 @@ export function AnalysisPage() {
     [rows, pageStartIndex, pageEndIndex],
   );
   const totalProfileEvents = useMemo(() => rows.reduce((sum, item) => sum + item.event_count, 0), [rows]);
+  const silhouetteSampleSize = summary.data?.silhouette_sample_size ?? metadata.data?.run?.silhouette_sample_size ?? null;
 
   useEffect(() => {
     setProfilePage(1);
@@ -42,7 +55,16 @@ export function AnalysisPage() {
         <article className="parameter-explainer glass-card"><span>JUMLAH MINIMUM TITIK (MinPts)</span><strong>{metadata.data?.run ? formatNumber(metadata.data.run.min_samples) : 'Dari hasil aktif'}</strong><p>Jumlah minimum titik dalam lingkungan epsilon, termasuk titik itu sendiri, untuk memenuhi kriteria titik inti (core point).</p></article>
         <article className="parameter-explainer glass-card"><span>METRIK JARAK</span><strong>{metadata.data?.run?.metric?.toUpperCase() || 'HAVERSINE'}</strong><p>Menghitung jarak geografis dari pasangan koordinat Latitude dan Longitude, bukan jarak Euclidean pada bidang datar.</p></article>
       </div>
-      <div className="analysis-reading-note parameter-note"><BookOpen size={17} /><p><strong>Evaluasi:</strong> Skor Silhouette digunakan sebagai salah satu indikator evaluasi struktur klaster. Baca nilainya bersama jumlah klaster, jumlah noise, distribusi anggota, dan konteks spasial; jangan menafsirkannya sendirian.</p></div>
+      <div className="analysis-reading-note parameter-note">
+        <BookOpen size={17} />
+        <p>
+          <strong>Evaluasi:</strong> Skor Silhouette digunakan sebagai salah satu indikator evaluasi struktur klaster
+          {silhouetteSampleSize != null && silhouetteSampleSize > 0
+            ? <> dan dihitung pada sampel terstratifikasi sebanyak <strong className="tabular-nums">{formatNumber(silhouetteSampleSize)}</strong> titik non-noise menggunakan metrik Haversine</>
+            : null}
+          . Baca nilainya bersama jumlah klaster, jumlah noise, distribusi anggota, dan konteks spasial; jangan menafsirkannya sendirian.
+        </p>
+      </div>
     </section>
 
     <section className="analysis-guide-section">
@@ -58,13 +80,50 @@ export function AnalysisPage() {
     <section className="analysis-results-section">
       <div className="section-heading-row"><div><span className="eyebrow">HASIL DBSCAN AKTIF</span><h2>Visualisasi dan ringkasan data</h2><p className="section-description">Grafik dan tabel di bawah mengikuti nilai yang dikembalikan sistem untuk hasil yang sedang dipublikasikan.</p></div></div>
       {summary.loading || profiles.loading ? <StatePanel type="loading" title="Memuat analisis" message="Mengambil ringkasan dan profil klaster dari sistem." /> : summary.error || profiles.error ? <StatePanel type="error" title="Analisis belum tersedia" message={summary.error || profiles.error || 'Sistem belum tersedia.'} /> : !summary.data || rows.length === 0 ? <StatePanel type="empty" title="Belum ada profil klaster yang dipublikasikan" message="Penjelasan metodologi tetap dapat dibaca. Grafik dan tabel akan terisi setelah sistem menyediakan profil dari hasil DBSCAN aktif berstatus Berhasil." /> : <>
-        <div className="stats-grid"><StatCard label="Total titik" value={formatNumber(summary.data.total_points)} icon={<Waves size={18} />} trend="Seluruh observasi pada hasil aktif" /><StatCard label="Jumlah klaster" value={formatNumber(summary.data.cluster_count)} icon={<Layers3 size={18} />} tone="violet" trend="Kelompok spasial terbentuk" /><StatCard label="Titik Noise" value={formatNumber(summary.data.noise_count)} icon={<Activity size={18} />} tone="amber" trend={`${formatNumber(summary.data.noise_percentage, 1)}% dari titik`} /><StatCard label="Skor Silhouette" value={summary.data.silhouette_score === null ? '—' : formatNumber(summary.data.silhouette_score, 3)} icon={<BookOpen size={18} />} tone="teal" trend="Indikator evaluasi dari sistem" /></div>
-        <div className="profile-count-note"><Layers3 size={15} /><span><strong>{formatNumber(summary.data.profile_count)}</strong> profil klaster tersedia · <strong>{formatNumber(totalProfileEvents)}</strong> total anggota pada tabel profil.</span></div>
-        <div className="charts-grid"><GlassCard title="Jumlah anggota per klaster" subtitle="Sebaran jumlah kejadian; skala logaritmik membantu membaca klaster kecil"><ClusterDistributionChart profiles={rows} /></GlassCard><GlassCard title="Komposisi klaster" subtitle="Enam klaster terbesar dan gabungan klaster lainnya"><ClusterShareChart profiles={rows} clusterCount={summary.data.cluster_count} /></GlassCard><GlassCard title="Profil kedalaman" subtitle="Perbandingan kategori kedalaman pada setiap klaster"><DepthProfileChart profiles={rows} /><div className="chart-legend"><span><i style={{ background: DEPTH_CATEGORY_COLORS.shallow }} />Dangkal (0–&lt;70 km)</span><span><i style={{ background: DEPTH_CATEGORY_COLORS.medium }} />Menengah (70–&lt;300 km)</span><span><i style={{ background: DEPTH_CATEGORY_COLORS.deep }} />Dalam (≥300 km)</span></div></GlassCard><GlassCard title="Profil rata-rata tiap klaster" subtitle="Magnitudo dan kedalaman ditampilkan dengan skala masing-masing"><div className="trend-pair-grid"><section className="trend-mini-panel"><div className="trend-mini-heading"><strong>Rata-rata magnitudo</strong><span>Magnitudo</span></div><MagnitudeProfileChart profiles={rows} /></section><section className="trend-mini-panel"><div className="trend-mini-heading"><strong>Rata-rata kedalaman</strong><span>Kilometer (km)</span></div><DepthAverageChart profiles={rows} /></section></div></GlassCard></div>
-        <GlassCard title="Ringkasan profil klaster" subtitle="Statistik kedalaman merupakan profil setelah klasterisasi. Tanda — berarti nilai tidak tersedia.">
+        <div className="stats-grid">
+          <StatCard label="Total titik" value={formatNumber(summary.data.total_points)} icon={<Waves size={18} />} trend="Seluruh observasi pada hasil aktif" />
+          <StatCard label="Jumlah klaster" value={formatNumber(summary.data.cluster_count)} icon={<Layers3 size={18} />} tone="violet" trend="Kelompok spasial terbentuk" />
+          <StatCard label="Titik Noise" value={formatNumber(summary.data.noise_count)} icon={<Activity size={18} />} tone="amber" trend={`${formatNumber(summary.data.noise_percentage, 2)}% dari titik`} />
+          <StatCard
+            label="Skor Silhouette"
+            value={summary.data.silhouette_score === null ? '—' : formatNumber(summary.data.silhouette_score, 4)}
+            icon={<BookOpen size={18} />}
+            tone="teal"
+            trend={silhouetteSampleSize != null && silhouetteSampleSize > 0 ? `Sampel ${formatNumber(silhouetteSampleSize)} titik non-noise` : 'Indikator evaluasi dari sistem'}
+          />
+        </div>
+        <div className="profile-count-note"><Layers3 size={15} /><span><strong className="tabular-nums">{formatNumber(summary.data.profile_count)}</strong> profil klaster tersedia · <strong className="tabular-nums">{formatNumber(totalProfileEvents)}</strong> total anggota pada tabel profil.</span></div>
+        <div className="charts-grid">
+          <GlassCard title="Jumlah anggota per klaster" subtitle={formatClusterScopeSubtitle(distScope, rows.length)}>
+            <ClusterDistributionChart profiles={rows} clusterScope={distScope} onClusterScopeChange={setDistScope} hideScopeSubtitle />
+          </GlassCard>
+          <GlassCard title="Komposisi klaster" subtitle={rows.length > 6 ? `Enam klaster terbesar dan gabungan ${formatNumber(rows.length - 6)} klaster lainnya` : `Proporsi seluruh ${formatNumber(rows.length)} klaster`}>
+            <ClusterShareChart profiles={rows} clusterCount={summary.data.cluster_count} />
+          </GlassCard>
+          <GlassCard title="Profil kedalaman" subtitle={formatClusterScopeSubtitle(depthScope, rows.length)}>
+            <DepthProfileChart profiles={rows} clusterScope={depthScope} onClusterScopeChange={setDepthScope} hideScopeSubtitle />
+            <div className="chart-legend"><span><i style={{ background: DEPTH_CATEGORY_COLORS.shallow }} />Dangkal (0–&lt;70 km)</span><span><i style={{ background: DEPTH_CATEGORY_COLORS.medium }} />Menengah (70–&lt;300 km)</span><span><i style={{ background: DEPTH_CATEGORY_COLORS.deep }} />Dalam (≥300 km)</span></div>
+          </GlassCard>
+          <GlassCard title="Profil rata-rata tiap klaster" subtitle={`${formatClusterScopeSubtitle(avgScope, rows.length)} Magnitudo dan kedalaman menggunakan skala masing-masing.`}>
+            <div className="chart-module">
+              <ClusterScopeControl totalCount={rows.length} scope={avgScope} onChange={setAvgScope} hideSubtitle />
+              <div className="trend-pair-grid">
+                <section className="trend-mini-panel">
+                  <div className="trend-mini-heading"><strong>Rata-rata magnitudo</strong><span>Magnitudo (M)</span></div>
+                  <MagnitudeProfileChart profiles={rows} clusterScope={avgScope} hideScopeControl hideScopeSubtitle />
+                </section>
+                <section className="trend-mini-panel">
+                  <div className="trend-mini-heading"><strong>Rata-rata kedalaman</strong><span>Kilometer (km)</span></div>
+                  <DepthAverageChart profiles={rows} clusterScope={avgScope} hideScopeControl hideScopeSubtitle />
+                </section>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+        <GlassCard title="Ringkasan profil klaster" subtitle="Statistik magnitudo, kedalaman, dan radius merupakan profil setelah klasterisasi. Tanda — berarti nilai tidak tersedia.">
           <div className="profile-table-toolbar">
             <p className="profile-table-count" aria-live="polite">
-              Menampilkan <strong>{formatNumber(pageStartIndex + 1)}–{formatNumber(pageEndIndex)}</strong> dari <strong>{formatNumber(rows.length)}</strong> klaster
+              Menampilkan <strong className="tabular-nums">{formatNumber(pageStartIndex + 1)}–{formatNumber(pageEndIndex)}</strong> dari <strong className="tabular-nums">{formatNumber(rows.length)}</strong> klaster
             </p>
             <label className="profile-table-size">
               <span>Baris per halaman</span>
@@ -82,15 +141,15 @@ export function AnalysisPage() {
               </select>
             </label>
           </div>
-          <div className="table-scroll"><table className="data-table"><thead><tr><th>ID Klaster</th><th>Anggota</th><th>Rata-rata Magnitudo</th><th>Rata-rata Kedalaman</th><th>Kedalaman Minimum</th><th>Kedalaman Maksimum</th><th>Dangkal</th><th>Menengah</th><th>Dalam</th><th>Lokasi Terbanyak</th><th>Titik Pusat (lintang, bujur)</th><th>Radius</th><th>Rentang Waktu Kejadian</th></tr></thead><tbody>{visibleRows.map((item) => <tr key={item.cluster_id}><td><span className="cluster-pill">C{item.cluster_id}</span></td><td>{formatNumber(item.event_count)}</td><td>{item.avg_magnitude === null ? '—' : formatNumber(item.avg_magnitude, 2)}</td><td>{item.avg_depth === null ? '—' : `${formatNumber(item.avg_depth, 1)} km`}</td><td>{item.min_depth === null ? '—' : `${formatNumber(item.min_depth, 1)} km`}</td><td>{item.max_depth === null ? '—' : `${formatNumber(item.max_depth, 1)} km`}</td><td>{formatNumber(item.shallow_event_count)}</td><td>{formatNumber(item.medium_event_count)}</td><td>{formatNumber(item.deep_event_count)}</td><td>{item.dominant_location || '—'}</td><td>{item.centroid_latitude === null || item.centroid_longitude === null ? '—' : `${formatNumber(item.centroid_latitude, 3)}, ${formatNumber(item.centroid_longitude, 3)}`}</td><td>{item.radius_km === null ? '—' : `${formatNumber(item.radius_km, 1)} km`}</td><td>{item.first_event_date || '—'} <span className="muted-text">→</span> {item.last_event_date || '—'}</td></tr>)}</tbody></table></div>
+          <div className="table-scroll"><table className="data-table"><thead><tr><th>ID Klaster</th><th>Anggota</th><th>Rata-rata Magnitudo</th><th>Magnitudo Minimum</th><th>Magnitudo Maksimum</th><th>Rata-rata Kedalaman</th><th>Kedalaman Minimum</th><th>Kedalaman Maksimum</th><th>Dangkal</th><th>Menengah</th><th>Dalam</th><th>Lokasi Terbanyak</th><th>Titik Pusat (lintang, bujur)</th><th>Radius Rata-rata</th><th>Radius Maks</th><th>Rentang Waktu Kejadian</th></tr></thead><tbody>{visibleRows.map((item) => <tr key={item.cluster_id}><td><span className="cluster-pill">C{item.cluster_id}</span></td><td>{formatNumber(item.event_count)}</td><td>{formatNumber(item.avg_magnitude, 2)}</td><td>{formatNumber(item.min_magnitude, 2)}</td><td>{formatNumber(item.max_magnitude, 2)}</td><td>{item.avg_depth === null ? '—' : `${formatNumber(item.avg_depth, 1)} km`}</td><td>{item.min_depth === null ? '—' : `${formatNumber(item.min_depth, 1)} km`}</td><td>{item.max_depth === null ? '—' : `${formatNumber(item.max_depth, 1)} km`}</td><td>{formatNumber(item.shallow_event_count)}</td><td>{formatNumber(item.medium_event_count)}</td><td>{formatNumber(item.deep_event_count)}</td><td>{item.dominant_location || '—'}</td><td>{item.centroid_latitude === null || item.centroid_longitude === null ? '—' : `${formatNumber(item.centroid_latitude, 3)}, ${formatNumber(item.centroid_longitude, 3)}`}</td><td>{item.radius_km === null ? '—' : `${formatNumber(item.radius_km, 1)} km`}</td><td>{item.max_radius_km === null ? '—' : `${formatNumber(item.max_radius_km, 1)} km`}</td><td>{item.first_event_date || '—'} <span className="muted-text">→</span> {item.last_event_date || '—'}</td></tr>)}</tbody></table></div>
           <div className="profile-table-pagination">
-            <span>Halaman <strong>{formatNumber(safeProfilePage)}</strong> dari <strong>{formatNumber(totalProfilePages)}</strong></span>
+            <span>Halaman <strong className="tabular-nums">{formatNumber(safeProfilePage)}</strong> dari <strong className="tabular-nums">{formatNumber(totalProfilePages)}</strong></span>
             <div className="profile-table-pagination-actions">
               <button type="button" className="profile-page-button" disabled={safeProfilePage <= 1} onClick={() => setProfilePage((page) => Math.max(1, page - 1))}>Sebelumnya</button>
               <button type="button" className="profile-page-button" disabled={safeProfilePage >= totalProfilePages} onClick={() => setProfilePage((page) => Math.min(totalProfilePages, page + 1))}>Berikutnya</button>
             </div>
           </div>
-          <p className="muted-text" style={{ marginTop: 12 }}>Kategori kedalaman: dangkal 0–&lt;70 km; menengah 70–&lt;300 km; dalam ≥300 km. Nilai ini tidak digunakan sebagai fitur DBSCAN.</p></GlassCard>
+          <p className="muted-text" style={{ marginTop: 12 }}>Kategori kedalaman: dangkal 0–&lt;70 km; menengah 70–&lt;300 km; dalam ≥300 km (tidak digunakan sebagai fitur DBSCAN). Radius Rata-rata dan Radius Maks dihitung dari jarak Haversine anggota klaster terhadap titik pusatnya.</p></GlassCard>
         <div className="analysis-reading-note"><BookOpen size={17} /><p><strong>Catatan interpretasi:</strong> ID klaster merupakan label identifikasi, bukan peringkat. Nilai rata-rata merangkum anggota klaster dan tidak menggambarkan setiap kejadian secara individual. Baca angka bersama distribusi spasial pada halaman Peta Klaster.</p></div>
       </>}
     </section>

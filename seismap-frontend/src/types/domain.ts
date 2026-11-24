@@ -226,6 +226,8 @@ export interface PublicMetadata {
     min_samples: number;
     metric: string;
     earth_radius_km: number;
+    silhouette_score?: number | null;
+    silhouette_sample_size?: number | null;
     created_at: string | null;
     completed_at: string | null;
     activated_at: string | null;
@@ -240,6 +242,7 @@ export interface PublicSummary {
   noise_count: number;
   noise_percentage: number;
   silhouette_score: number | null;
+  silhouette_sample_size?: number | null;
   profile_count: number;
 }
 

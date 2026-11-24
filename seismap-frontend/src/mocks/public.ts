@@ -8,7 +8,7 @@ export const previewMetadata: PublicMetadata = {
 
 export const previewSummary: PublicSummary = {
   dataset_id: 1, dataset_name: 'Preview Dataset Gempa Indonesia', total_points: 59847, cluster_count: 18,
-  noise_count: 7240, noise_percentage: 12.1, silhouette_score: 0.42, profile_count: 18,
+  noise_count: 7240, noise_percentage: 12.1, silhouette_score: 0.42, silhouette_sample_size: 5000, profile_count: 18,
 };
 
 export const previewProfiles: ClusterProfile[] = Array.from({ length: 8 }, (_, i) => ({

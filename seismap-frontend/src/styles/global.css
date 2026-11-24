@@ -1185,7 +1185,9 @@ body { overflow-x: hidden; color: var(--text); font-size: 14px; line-height: 1.5
    SEISMAP v0.4.10 — chart readability and interaction refinement
    ======================================================================== */
 .chart-module { display: grid; gap: 7px; min-width: 0; }
-.chart-mode-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.chart-scope-block { display: grid; gap: 6px; min-width: 0; }
+.chart-scroll-x { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+.chart-mode-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; min-width: 0; }
 .chart-mode-label { color: #9FB3C8; font-size: 10px; font-weight: 600; }
 .chart-mode-group { display: inline-flex; flex: 0 0 auto; gap: 3px; padding: 3px; border: 1px solid rgba(185,218,245,.13); border-radius: 9px; background: rgba(5,16,28,.42); }
 .chart-mode-button { min-height: 30px; padding: 5px 10px; color: #91A7BC; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; font: inherit; font-size: 10px; font-weight: 600; transition: color .16s ease, background .16s ease, border-color .16s ease; }
@@ -1211,12 +1213,12 @@ body { overflow-x: hidden; color: var(--text); font-size: 14px; line-height: 1.5
 .share-chart-item small { grid-column: 2 / 4; color: #8299AE; font-size: 8px; line-height: 1.2; }
 .share-chart-footnote { margin: 0; color: #778EA4; font-size: 8px; line-height: 1.4; }
 
-.trend-pair-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; min-width: 0; }
+.trend-pair-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
 .trend-mini-panel { min-width: 0; padding: 9px 8px 3px; border: 1px solid rgba(185,218,245,.1); border-radius: 11px; background: rgba(5,16,28,.2); }
 .trend-mini-heading { display: flex; align-items: center; justify-content: space-between; gap: 7px; min-width: 0; padding: 0 4px 2px; }
 .trend-mini-heading strong { min-width: 0; color: #DDEAF7; font-size: 10px; }
 .trend-mini-heading span { flex: 0 0 auto; color: #8299AE; font-size: 8px; }
-.chart-wrap-compact { height: 220px; }
+.chart-wrap-compact { height: 185px; }
 
 @media (max-width: 850px) {
   .share-chart-layout { grid-template-columns: minmax(0, 1fr) minmax(155px, .9fr); gap: 6px; }
@@ -1236,7 +1238,7 @@ body { overflow-x: hidden; color: var(--text); font-size: 14px; line-height: 1.5
   .share-chart-item { padding: 7px; }
   .share-chart-footnote { font-size: 9px; }
   .trend-pair-grid { grid-template-columns: minmax(0, 1fr); }
-  .chart-wrap-compact { height: 215px; }
+  .chart-wrap-compact { height: 185px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .chart-mode-button { transition: none; }
@@ -3903,12 +3905,19 @@ body { overflow-x: hidden; color: var(--text); font-size: 14px; line-height: 1.5
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-foot {
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table td,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Universal GlassCard and Admin/Public Card Containment */

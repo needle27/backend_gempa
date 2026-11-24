@@ -12,6 +12,7 @@ export function HomePage() {
   const metadata = useResource(getPublicMetadata, []);
   const data = summary.data;
   const dataset = metadata.data?.dataset;
+  const silhouetteSampleSize = data?.silhouette_sample_size ?? metadata.data?.run?.silhouette_sample_size ?? null;
 
   return <div className="home-page">
     <section className="hero-section">
@@ -49,8 +50,8 @@ export function HomePage() {
         <div className="overview-grid">
           <StatCard label="Titik gempa" value={formatNumber(data.total_points)} icon={<Waves size={18} />} tone="cyan" trend="Observasi pada hasil aktif" />
           <StatCard label="Klaster terbentuk" value={formatNumber(data.cluster_count)} icon={<Layers3 size={18} />} tone="violet" trend="Kelompok spasial DBSCAN" />
-          <StatCard label="Titik Noise" value={formatNumber(data.noise_count)} icon={<Crosshair size={18} />} tone="amber" trend={`${formatNumber(data.noise_percentage, 1)}% dari seluruh titik`} />
-          <StatCard label="Skor Silhouette" value={data.silhouette_score === null ? '—' : formatNumber(data.silhouette_score, 3)} icon={<Sparkles size={18} />} tone="teal" trend="Indikator evaluasi klaster" />
+          <StatCard label="Titik Noise" value={formatNumber(data.noise_count)} icon={<Crosshair size={18} />} tone="amber" trend={`${formatNumber(data.noise_percentage, 2)}% dari seluruh titik`} />
+          <StatCard label="Skor Silhouette" value={data.silhouette_score === null ? '—' : formatNumber(data.silhouette_score, 4)} icon={<Sparkles size={18} />} tone="teal" trend={silhouetteSampleSize != null && silhouetteSampleSize > 0 ? `Sampel ${formatNumber(silhouetteSampleSize)} titik non-noise` : 'Indikator evaluasi klaster'} />
         </div>
         <div className="data-provenance"><Database size={16} /><span><strong>{data.dataset_name}</strong>{dataset?.source_name ? ` · ${dataset.source_name}` : ''}{dataset?.start_date && dataset?.end_date ? ` · ${dataset.start_date} – ${dataset.end_date}` : ''}</span><span className="provenance-note">Sumber: hasil DBSCAN aktif</span></div>
       </> : <StatePanel type="empty" title="Belum ada hasil penelitian aktif" message="Ringkasan akan tersedia setelah hasil DBSCAN berstatus Berhasil dan diaktifkan oleh admin. Tampilan ini tidak menggantinya dengan data BMKG realtime." />}

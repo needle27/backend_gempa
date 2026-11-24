@@ -9,12 +9,31 @@ export const CLUSTER_PALETTE = [
   '#F3B85F', // amber
   '#6CA8FF', // blue
   '#E47BB4', // pink
-  '#A5C66D', // green
+  '#A5C66D', // sage green
   '#F08B67', // coral
-  '#6EC8D9', // light cyan
-  '#B28CF4', // lavender
+  '#FACC15', // bright yellow
+  '#FB7185', // crimson rose
+  '#38BDF8', // sky blue
+  '#C084FC', // orchid purple
+  '#4ADE80', // emerald green
+  '#FB923C', // vivid orange
+  '#818CF8', // periwinkle indigo
+  '#E879F9', // fuchsia orchid
+  '#2DD4BF', // turquoise
+  '#F87171', // warm red
+  '#BEF264', // chartreuse
+  '#FDBA74', // apricot peach
+  '#67E8F9', // aqua glow
+  '#D8B4FE', // pale lilac
+  '#6EE7B7', // seafoam mint
+  '#FDE047', // canary gold
+  '#93C5FD', // powder blue
+  '#FDA4AF', // blush rose
+  '#86EFAC', // spring pastel
+  '#F472B6', // magenta pink
+  '#FCD34D', // marigold
+  '#A5B4FC', // lavender blue
 ] as const;
-
 
 export const DEPTH_CATEGORY_COLORS = {
   shallow: '#42C5D8',
@@ -24,8 +43,19 @@ export const DEPTH_CATEGORY_COLORS = {
 
 export const NOISE_COLOR = '#8B98A8';
 
+const GOLDEN_ANGLE_DEG = 137.508;
+
 export function clusterColor(clusterId: number): string {
-  if (!Number.isFinite(clusterId) || clusterId === -1) return NOISE_COLOR;
-  const index = Math.abs(Math.trunc(clusterId)) % CLUSTER_PALETTE.length;
-  return CLUSTER_PALETTE[index];
+  if (!Number.isFinite(clusterId)) return NOISE_COLOR;
+  const normalizedId = Math.trunc(clusterId);
+  if (normalizedId < 0) return NOISE_COLOR;
+  if (normalizedId < CLUSTER_PALETTE.length) {
+    return CLUSTER_PALETTE[normalizedId];
+  }
+  // Deterministic golden-angle HSL fallback so 30+ clusters stay high-contrast without modulo collisions.
+  const overflowOffset = normalizedId - CLUSTER_PALETTE.length + 1;
+  const hue = Number(((overflowOffset * GOLDEN_ANGLE_DEG) % 360).toFixed(1));
+  const saturation = 72 + ((overflowOffset * 7) % 16);
+  const lightness = 60 + ((overflowOffset * 5) % 14);
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
