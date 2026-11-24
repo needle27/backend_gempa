@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PipelineProvider } from './context/PipelineContext';
+import { LanguageProvider, useI18n } from './i18n/LanguageContext';
 import { IS_PREVIEW_MODE } from './config/env';
 import { PublicLayout } from './layouts/PublicLayout';
 import { AdminLayout } from './layouts/AdminLayout';
@@ -25,10 +26,22 @@ const JobManagementPage = lazy(() => import('./pages/admin/JobManagementPage').t
 
 function AdminGate() {
   const { authenticated, loading } = useAuth();
+  const { t } = useI18n();
   if (IS_PREVIEW_MODE) return <AdminLayout />;
-  if (loading) return <div className="route-loading"><StatePanel type="loading" title="Memeriksa sesi" message="Memeriksa status masuk administrator." /></div>;
+  if (loading) return <div className="route-loading"><StatePanel type="loading" title={t.appStates.checkingSessionTitle} message={t.appStates.checkingSessionMsg} /></div>;
   if (!authenticated) return <Navigate to="/admin/login" replace />;
   return <AdminLayout />;
+}
+
+function AppShell() {
+  const { t } = useI18n();
+  return <AuthProvider>
+    <PipelineProvider>
+      <Suspense fallback={<div className="route-loading"><StatePanel type="loading" title={t.appStates.loadingPageTitle} message={t.appStates.loadingPageMsg} /></div>}>
+        <RouteTree />
+      </Suspense>
+    </PipelineProvider>
+  </AuthProvider>;
 }
 
 function RouteTree() {
@@ -59,12 +72,8 @@ function RouteTree() {
 
 export default function App() {
   return <BrowserRouter>
-    <AuthProvider>
-      <PipelineProvider>
-        <Suspense fallback={<div className="route-loading"><StatePanel type="loading" title="Memuat halaman" message="Menyiapkan komponen SEISMAP." /></div>}>
-          <RouteTree />
-        </Suspense>
-      </PipelineProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AppShell />
+    </LanguageProvider>
   </BrowserRouter>;
 }

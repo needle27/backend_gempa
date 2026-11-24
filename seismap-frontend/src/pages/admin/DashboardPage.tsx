@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom';
 import { getDatasets, getPublicMetadata, getPublicSummary } from '../../api/services';
 import { GlassCard, PageHeader, SimulationTag, StatePanel, StatCard, StatusBadge, formatDate, formatNumber } from '../../components/ui';
 import { useResource } from '../../hooks/useResource';
+import { useI18n } from '../../i18n/LanguageContext';
+import type { Language } from '../../i18n/types';
 import { formatPercent } from '../../utils/presentation';
 
 const INSTITUTION_ACRONYMS = new Set(['bmkg', 'usgs', 'noaa', 'isc', 'emsc', 'gfz', 'bnpb', 'brin', 'inatews', 'csv', 'api']);
 
-function formatSourceInstitution(raw?: string | null): string {
+function formatSourceInstitution(raw: string | null | undefined, lang: Language): string {
   const trimmed = raw?.trim();
-  if (!trimmed) return 'Katalog Gempa';
+  if (!trimmed) return lang === 'en' ? 'Earthquake Catalog' : 'Katalog Gempa';
   return trimmed
     .split(/\s+/)
     .map((word) => {
@@ -20,14 +22,20 @@ function formatSourceInstitution(raw?: string | null): string {
     .join(' ');
 }
 
-function silhouetteQualityLabel(score: number | null | undefined): string {
+function silhouetteQualityLabel(score: number | null | undefined, lang: Language): string {
   if (score === null || score === undefined || Number.isNaN(score)) return '';
+  if (lang === 'en') {
+    if (score >= 0.5) return 'strong';
+    if (score >= 0.25) return 'fair';
+    return 'weak';
+  }
   if (score >= 0.5) return 'baik';
   if (score >= 0.25) return 'cukup';
   return 'lemah';
 }
 
 export function DashboardPage() {
+  const { lang, tx } = useI18n();
   const datasets = useResource(getDatasets, []);
   const activePublic = useResource(async () => {
     try {
@@ -49,51 +57,51 @@ export function DashboardPage() {
   const activeSummary = activePublic.data?.summary;
   const activeDataset = activePublic.data?.metadata?.dataset;
   const clusteredPct = activeSummary ? Math.max(0, Math.min(100, 100 - activeSummary.noise_percentage)) : 0;
-  const qualityLabel = activeSummary ? silhouetteQualityLabel(activeSummary.silhouette_score) : '';
+  const qualityLabel = activeSummary ? silhouetteQualityLabel(activeSummary.silhouette_score, lang) : '';
 
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="ADMIN / RINGKASAN"
+        eyebrow={tx('ADMIN / RINGKASAN', 'ADMIN / OVERVIEW')}
         title="Dashboard"
-        description="Ringkasan pengelolaan dan publikasi hasil klasterisasi DBSCAN gempa Indonesia."
+        description={tx('Ringkasan pengelolaan dan publikasi hasil klasterisasi DBSCAN gempa Indonesia.', 'Summary of dataset management and publication of Indonesia earthquake DBSCAN clustering results.')}
         action={<SimulationTag />}
       />
 
       {datasets.loading ? (
-        <StatePanel type="loading" title="Memuat dashboard" message="Mengambil daftar dataset dan status publikasi." />
+        <StatePanel type="loading" title={tx('Memuat dashboard', 'Loading dashboard')} message={tx('Mengambil daftar dataset dan status publikasi.', 'Fetching datasets and active publication status.')} />
       ) : datasets.error ? (
         <StatePanel
           type="error"
-          title="Dashboard belum terhubung"
+          title={tx('Dashboard belum terhubung', 'Dashboard unavailable')}
           message={datasets.error}
-          action={<button className="button button-secondary" onClick={() => { datasets.reload(); activePublic.reload(); }}>Coba lagi</button>}
+          action={<button className="button button-secondary" onClick={() => { datasets.reload(); activePublic.reload(); }}>{tx('Coba lagi', 'Try again')}</button>}
         />
       ) : (
         <>
           <div className="stats-grid stats-grid-three">
-            <StatCard label="Dataset Tersimpan" value={formatNumber(list.length)} icon={<Database size={18} />} />
-            <StatCard label="Baris Bersih" value={formatNumber(totalRows)} icon={<Waves size={18} />} tone="violet" />
-            <StatCard label="Baris Ditolak" value={formatNumber(rejectedRows)} icon={<ShieldCheck size={18} />} tone="amber" />
+            <StatCard label={tx('Dataset Tersimpan', 'Stored Datasets')} value={formatNumber(list.length)} icon={<Database size={18} />} />
+            <StatCard label={tx('Baris Bersih', 'Clean Rows')} value={formatNumber(totalRows)} icon={<Waves size={18} />} tone="violet" />
+            <StatCard label={tx('Baris Ditolak', 'Rejected Rows')} value={formatNumber(rejectedRows)} icon={<ShieldCheck size={18} />} tone="amber" />
           </div>
 
           {/* Kartu Sorotan: Hasil Klasterisasi Aktif di WebGIS Publik */}
           <GlassCard className="active-publication-card">
             <div className="active-publication-header">
               <div className="active-publication-title-area">
-                <span className="eyebrow"><Rocket size={13} /> PUBLIKASI WEBGIS AKTIF</span>
+                <span className="eyebrow"><Rocket size={13} /> {tx('PUBLIKASI WEBGIS AKTIF', 'ACTIVE WEBGIS PUBLICATION')}</span>
                 <h3 style={{ margin: '4px 0 2px', fontSize: '17px', color: '#f0f7fe' }}>
-                  {activeRun ? `Hasil Klasterisasi Aktif #${activeRun.id}` : 'Hasil Klasterisasi Aktif'}
+                  {activeRun ? tx(`Hasil Klasterisasi Aktif #${activeRun.id}`, `Active Clustering Run #${activeRun.id}`) : tx('Hasil Klasterisasi Aktif', 'Active Clustering Run')}
                 </h3>
                 <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>
                   {activeDataset?.name || activeSummary?.dataset_name
-                    ? `Sumber: ${activeDataset?.name || activeSummary?.dataset_name} · ${formatSourceInstitution(activeDataset?.source_name)}`
-                    : 'Rujukan data resmi yang saat ini disajikan kepada publik.'}
+                    ? `${tx('Sumber:', 'Source:')} ${activeDataset?.name || activeSummary?.dataset_name} · ${formatSourceInstitution(activeDataset?.source_name, lang)}`
+                    : tx('Rujukan data resmi yang saat ini disajikan kepada publik.', 'Official research reference currently published to the public.')}
                 </p>
               </div>
               <div className="active-publication-badge-area">
                 {activeRun ? (
-                  <span className="active-label"><i /> Sedang Tayang di WebGIS</span>
+                  <span className="active-label"><i /> {tx('Sedang Tayang di WebGIS', 'Live on WebGIS')}</span>
                 ) : (
                   <StatusBadge status="NO_ACTIVE_RUN" />
                 )}
@@ -101,12 +109,12 @@ export function DashboardPage() {
             </div>
 
             {activePublic.loading ? (
-              <StatePanel type="loading" title="Memuat publikasi aktif" message="Mengambil rincian eksekusi aktif." />
+              <StatePanel type="loading" title={tx('Memuat publikasi aktif', 'Loading active publication')} message={tx('Mengambil rincian eksekusi aktif.', 'Fetching active execution details.')} />
             ) : activeRun && activeSummary ? (
               <>
                 <div className="active-publication-grid">
                   <div className="active-publication-item">
-                    <span>Epsilon (Jarak)</span>
+                    <span>{tx('Epsilon (Jarak)', 'Epsilon (Distance)')}</span>
                     <strong className="tabular-nums">{formatNumber(activeRun.eps_km, 2)} <small>km</small></strong>
                   </div>
                   <div className="active-publication-item">
@@ -114,46 +122,49 @@ export function DashboardPage() {
                     <strong className="tabular-nums">{formatNumber(activeRun.min_samples)}</strong>
                   </div>
                   <div className="active-publication-item">
-                    <span>Jumlah Klaster</span>
+                    <span>{tx('Jumlah Klaster', 'Cluster Count')}</span>
                     <strong className="tabular-nums">{formatNumber(activeSummary.cluster_count)}</strong>
                   </div>
                   <div className="active-publication-item">
-                    <span>Persentase Noise</span>
+                    <span>{tx('Persentase Noise', 'Noise Percentage')}</span>
                     <strong className="tabular-nums">{formatPercent(activeSummary.noise_percentage, 2)}</strong>
                   </div>
                   <div className="active-publication-item">
-                    <span>Skor Silhouette</span>
+                    <span>{tx('Skor Silhouette', 'Silhouette Score')}</span>
                     <strong className="tabular-nums">
                       {activeSummary.silhouette_score != null ? formatNumber(activeSummary.silhouette_score, 4) : '—'}
                     </strong>
                   </div>
                   <div className="active-publication-item">
-                    <span>Total Titik Gempa</span>
+                    <span>{tx('Total Titik Gempa', 'Total Earthquakes')}</span>
                     <strong className="tabular-nums">{formatNumber(activeSummary.total_points)}</strong>
                   </div>
                 </div>
 
                 <p className="active-publication-summary tabular-nums">
-                  Terbentuk {formatNumber(activeSummary.cluster_count)} klaster spasial ({formatPercent(clusteredPct, 2)} kejadian terklasterisasi){qualityLabel ? ` dengan pemisahan klaster yang ${qualityLabel}.` : '.'}
+                  {tx(
+                    `Terbentuk ${formatNumber(activeSummary.cluster_count)} klaster spasial (${formatPercent(clusteredPct, 2)} kejadian terklasterisasi)${qualityLabel ? ` dengan pemisahan klaster yang ${qualityLabel}.` : '.'}`,
+                    `Formed ${formatNumber(activeSummary.cluster_count)} spatial clusters (${formatPercent(clusteredPct, 2)} clustered events)${qualityLabel ? ` with ${qualityLabel} cluster separation.` : '.'}`,
+                  )}
                 </p>
 
                 <div className="active-publication-actions">
                   <Link to="/" className="button button-primary">
-                    <ExternalLink size={14} /> Lihat di Peta Publik
+                    <ExternalLink size={14} /> {tx('Lihat di Peta Publik', 'View on Public Map')}
                   </Link>
                   <Link to="/admin/riwayat-run" className="button button-secondary">
-                    <FileClock size={14} /> Kelola di Riwayat Eksekusi
+                    <FileClock size={14} /> {tx('Kelola di Riwayat Eksekusi', 'Manage in Execution History')}
                   </Link>
                 </div>
               </>
             ) : (
               <StatePanel
                 type="info"
-                title="Belum ada hasil klasterisasi aktif"
-                message="WebGIS publik belum memiliki layer klaster yang diaktifkan. Jalankan klasterisasi final lalu aktifkan hasil terbaik pada Riwayat Eksekusi."
+                title={tx('Belum ada hasil klasterisasi aktif', 'No active clustering result')}
+                message={tx('WebGIS publik belum memiliki layer klaster yang diaktifkan. Jalankan klasterisasi final lalu aktifkan hasil terbaik pada Riwayat Eksekusi.', 'Public WebGIS has no active cluster layer yet. Run final clustering and activate the best run in Execution History.')}
                 action={
                   <Link to="/admin/dbscan-final" className="button button-primary">
-                    <Rocket size={14} /> Jalankan DBSCAN Final <ArrowRight size={13} />
+                    <Rocket size={14} /> {tx('Jalankan DBSCAN Final', 'Run Final DBSCAN')} <ArrowRight size={13} />
                   </Link>
                 }
               />
@@ -162,10 +173,10 @@ export function DashboardPage() {
 
           <div className="dashboard-grid">
             <GlassCard
-              title="Dataset Terbaru"
+              title={tx('Dataset Terbaru', 'Latest Datasets')}
               action={
                 <Link to="/admin/dataset" className="inline-link">
-                  Lihat semua <ArrowRight size={14} />
+                  {tx('Lihat semua', 'View all')} <ArrowRight size={14} />
                 </Link>
               }
             >
@@ -183,35 +194,35 @@ export function DashboardPage() {
                   ))}
                 </div>
               ) : (
-                <StatePanel type="empty" title="Belum ada dataset" message="Unggah dataset CSV yang telah dibersihkan dari Jupyter Notebook." />
+                <StatePanel type="empty" title={tx('Belum ada dataset', 'No datasets yet')} message={tx('Unggah file CSV hasil prapemrosesan.', 'Upload a preprocessed CSV dataset.')} />
               )}
             </GlassCard>
 
             <GlassCard
               className="workflow-card"
-              title="Alur Kerja Penelitian"
+              title={tx('Alur Kerja Penelitian', 'Research Workflow')}
               action={<span className="workflow-icon"><Layers3 size={18} /></span>}
             >
               <div className="workflow-steps">
                 <div>
                   <i>01</i>
-                  <span><strong>Dataset</strong><small>Unggah dataset gempa (CSV)</small></span>
-                  <Link to="/admin/dataset">Buka</Link>
+                  <span><strong>{tx('Dataset', 'Datasets')}</strong><small>{tx('Unggah dataset gempa (CSV)', 'Upload earthquake dataset (CSV)')}</small></span>
+                  <Link to="/admin/dataset">{tx('Buka', 'Open')}</Link>
                 </div>
                 <div>
                   <i>02</i>
-                  <span><strong>Pencarian Parameter</strong><small>Eksperimen kandidat ε dan MinPts</small></span>
-                  <Link to="/admin/parameter">Buka</Link>
+                  <span><strong>{tx('Pencarian Parameter', 'Parameter Search')}</strong><small>{tx('Eksperimen kandidat ε dan MinPts', 'Experiment with ε and MinPts candidates')}</small></span>
+                  <Link to="/admin/parameter">{tx('Buka', 'Open')}</Link>
                 </div>
                 <div>
                   <i>03</i>
-                  <span><strong>DBSCAN Final</strong><small>Jalankan eksperimen terpilih</small></span>
-                  <Link to="/admin/dbscan-final">Buka</Link>
+                  <span><strong>{tx('DBSCAN Final', 'Final DBSCAN')}</strong><small>{tx('Jalankan eksperimen terpilih', 'Execute selected valid experiment')}</small></span>
+                  <Link to="/admin/dbscan-final">{tx('Buka', 'Open')}</Link>
                 </div>
                 <div>
                   <i>04</i>
-                  <span><strong>Riwayat Eksekusi</strong><small>Periksa dan aktifkan hasil klasterisasi</small></span>
-                  <Link to="/admin/riwayat-run">Buka</Link>
+                  <span><strong>{tx('Riwayat Eksekusi', 'Execution History')}</strong><small>{tx('Periksa dan aktifkan hasil klasterisasi', 'Inspect and activate clustering runs')}</small></span>
+                  <Link to="/admin/riwayat-run">{tx('Buka', 'Open')}</Link>
                 </div>
               </div>
             </GlassCard>

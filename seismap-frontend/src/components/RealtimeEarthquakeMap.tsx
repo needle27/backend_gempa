@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { useI18n } from '../i18n/LanguageContext';
 import type { RealtimeEarthquake } from '../types/domain';
 import { formatNumber } from './ui';
 
@@ -51,7 +52,6 @@ function FocusBounds({ items }: { items: RealtimeEarthquake[] }) {
     const valid = items.filter(validCoordinate);
     if (!valid.length) return;
 
-    // Wait for Leaflet to receive the final container dimensions before fitting.
     const frame = requestAnimationFrame(() => {
       map.invalidateSize({ pan: false, animate: false });
       if (valid.length === 1) {
@@ -78,6 +78,7 @@ export function RealtimeEarthquakeMap({ items, highlightLatest = false }: {
   items: RealtimeEarthquake[];
   highlightLatest?: boolean;
 }) {
+  const { tx } = useI18n();
   const validItems = items.filter(validCoordinate);
   const [tileErrors, setTileErrors] = useState(0);
   const first = validItems[0];
@@ -86,11 +87,11 @@ export function RealtimeEarthquakeMap({ items, highlightLatest = false }: {
   return <section className="realtime-map-card glass-card">
     <div className="realtime-map-heading">
       <div>
-        <span className="eyebrow">LOKASI KEJADIAN</span>
-        <h3>{highlightLatest ? 'Peta gempa terbaru' : 'Sebaran kejadian pada peta'}</h3>
-        <p>{highlightLatest ? 'Penanda bercahaya menunjukkan lokasi gempa terbaru dari BMKG.' : 'Pilih penanda untuk melihat ringkasan kejadian gempa.'}</p>
+        <span className="eyebrow">{tx('LOKASI KEJADIAN', 'EVENT LOCATION')}</span>
+        <h3>{highlightLatest ? tx('Peta gempa terbaru', 'Latest earthquake map') : tx('Sebaran kejadian pada peta', 'Event distribution map')}</h3>
+        <p>{highlightLatest ? tx('Penanda bercahaya menunjukkan lokasi gempa terbaru dari BMKG.', 'Glowing marker highlights the latest BMKG earthquake location.') : tx('Pilih penanda untuk melihat ringkasan kejadian gempa.', 'Select a marker to view earthquake details.')}</p>
       </div>
-      <span className="realtime-map-count">{validItems.length} titik</span>
+      <span className="realtime-map-count">{formatNumber(validItems.length)} {tx('titik', 'points')}</span>
     </div>
     <div className="realtime-map-frame">
       <MapContainer center={center} zoom={highlightLatest ? 6 : 4} scrollWheelZoom zoomControl preferCanvas>
@@ -109,9 +110,9 @@ export function RealtimeEarthquakeMap({ items, highlightLatest = false }: {
         {validItems.map((item, index) => {
           const popup = <Popup>
             <div className="realtime-map-popup">
-              <strong>{item.region || 'Lokasi tidak tersedia'}</strong>
-              <span>Magnitudo {formatNumber(item.magnitude, 1)}</span>
-              <span>Kedalaman {item.depth_label || (item.depth_km === null ? '—' : `${item.depth_km} km`)}</span>
+              <strong>{item.region || tx('Lokasi tidak tersedia', 'Location unavailable')}</strong>
+              <span>{tx('Magnitudo', 'Magnitude')} {formatNumber(item.magnitude, 1)}</span>
+              <span>{tx('Kedalaman', 'Depth')} {item.depth_label || (item.depth_km === null ? '—' : `${item.depth_km} km`)}</span>
               <span>{item.date_local || '—'} · {item.time_local || '—'}</span>
               <span>{formatNumber(item.latitude, 3)}, {formatNumber(item.longitude, 3)}</span>
             </div>
@@ -128,12 +129,12 @@ export function RealtimeEarthquakeMap({ items, highlightLatest = false }: {
       </MapContainer>
     </div>
     {tileErrors > 0 && <div className="realtime-map-tile-warning" role="status">
-      Sebagian gambar peta belum berhasil dimuat. Periksa koneksi internet, lalu coba muat ulang halaman.
+      {tx('Sebagian gambar peta belum berhasil dimuat. Periksa koneksi internet, lalu coba muat ulang halaman.', 'Some map tiles failed to load. Check your internet connection and reload the page.')}
     </div>}
     <div className="realtime-map-footer">
-      <span><i className={highlightLatest ? 'realtime-map-dot latest' : 'realtime-map-dot'} />{highlightLatest ? 'Gempa terbaru' : 'Lokasi kejadian'}</span>
-      <span>Koordinat: lintang · bujur</span>
-      <span>Sumber: BMKG</span>
+      <span><i className={highlightLatest ? 'realtime-map-dot latest' : 'realtime-map-dot'} />{highlightLatest ? tx('Gempa terbaru', 'Latest earthquake') : tx('Lokasi kejadian', 'Event location')}</span>
+      <span>{tx('Koordinat: lintang · bujur', 'Coordinates: lat · lon')}</span>
+      <span>{tx('Sumber: BMKG', 'Source: BMKG')}</span>
     </div>
   </section>;
 }

@@ -6,9 +6,11 @@ import { usePipeline } from '../../context/PipelineContext';
 import { useResource } from '../../hooks/useResource';
 import { GlassCard, PageHeader, SimulationTag, StatePanel, StatusBadge, formatDate, formatNumber, RecordDetails } from '../../components/ui';
 import { ConfirmModal } from '../../components/admin/ConfirmModal';
+import { useI18n } from '../../i18n/LanguageContext';
 import type { DBSCANRun } from '../../types/domain';
 
 export function RunHistoryPage() {
+  const { tx } = useI18n();
   const datasets = useResource(getDatasets, []);
   const { selectedDatasetId, setSelectedDatasetId } = usePipeline();
   const datasetId = selectedDatasetId ?? datasets.data?.[0]?.id ?? null;
@@ -25,7 +27,7 @@ export function RunHistoryPage() {
   const showDetail = async (runId: number) => {
     setDetailRunId(runId); setDetail(null); setDetailError(null); setDetailLoading(true);
     try { setDetail(await getRunDetail(runId)); }
-    catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Rincian eksekusi tidak dapat dimuat.'); }
+    catch (reason) { setDetailError(reason instanceof Error ? reason.message : tx('Rincian eksekusi tidak dapat dimuat.', 'Unable to load execution details.')); }
     finally { setDetailLoading(false); }
   };
 
@@ -37,30 +39,30 @@ export function RunHistoryPage() {
     setError(null);
     try {
       await activateRun(runId);
-      setMessage(`Hasil #${runId} berhasil diaktifkan sebagai rujukan WebGIS publik.`);
+      setMessage(tx(`Hasil #${runId} berhasil diaktifkan sebagai rujukan WebGIS publik.`, `Run #${runId} has been activated as the public WebGIS source.`));
       runs.reload();
       setConfirmingRun(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Hasil gagal diaktifkan.');
+      setError(reason instanceof Error ? reason.message : tx('Hasil gagal diaktifkan.', 'Failed to activate run.'));
     } finally {
       setBusyRun(null);
     }
   };
 
   return <div className="page-stack">
-    <PageHeader eyebrow="ADMIN / RIWAYAT EKSEKUSI" title="Riwayat Eksekusi" description="Tinjau hasil DBSCAN dan tentukan hasil yang akan ditampilkan pada WebGIS publik." action={<SimulationTag />} />
-    <div className="run-filter glass-card"><label>Dataset<select value={datasetId ?? ''} onChange={(e) => setSelectedDatasetId(Number(e.target.value) || null)}><option value="">Pilih dataset</option>{datasets.data?.map((item) => <option key={item.id} value={item.id}>{item.dataset_name}</option>)}</select></label><button className="button button-secondary" onClick={runs.reload}><RefreshCw size={14} /> Muat ulang</button></div>
-    {message && <div className="success-panel"><CheckCircle2 size={17} /><div><strong>Aktivasi berhasil</strong><span>{message}</span></div></div>}{error && <div className="form-error">{error}</div>}
-    <GlassCard title="Daftar Eksekusi">{runs.loading ? <StatePanel type="loading" title="Memuat riwayat" message="Mengambil daftar eksekusi." /> : runs.error ? <StatePanel type="error" title="Riwayat belum tersedia" message={runs.error} /> : !runs.data?.length ? <StatePanel type="empty" title="Belum ada eksekusi" message="Hasil yang dibuat melalui DBSCAN Final akan muncul di sini." /> : <div className="table-scroll"><table className="data-table"><thead><tr><th>Eksekusi</th><th>Eksperimen</th><th>Epsilon (km)</th><th>MinPts</th><th>Klaster</th><th>Persentase Noise</th><th>Skor Silhouette</th><th>Status</th><th>Aktif</th><th /></tr></thead><tbody>{runs.data.map((run) => <tr key={run.id} className={run.is_active ? 'job-row-recommended' : undefined}><td><div className="run-id-cell"><strong>#{run.id}</strong>{run.is_active && <span className="webgis-active-badge"><i /> Aktif di WebGIS</span>}</div><small className="table-sub">{formatDate(run.created_at)}</small></td><td>#{run.selected_experiment_id}</td><td>{formatNumber(run.eps_km, 2)}</td><td>{run.min_samples}</td><td>{run.cluster_count === null ? '—' : formatNumber(run.cluster_count)}</td><td>{run.noise_percentage === null ? '—' : `${formatNumber(run.noise_percentage, 2)}%`}</td><td>{formatNumber(run.silhouette_score, 4)}</td><td><StatusBadge status={run.status} /></td><td>{run.is_active ? <span className="active-label"><i /> Aktif</span> : '—'}</td><td><div className="table-actions"><button className="text-button" onClick={() => void showDetail(run.id)}>Rincian</button>{run.status === 'SUCCESS' && !run.is_active && <button className="text-button" disabled={IS_PREVIEW_MODE || busyRun === run.id} onClick={() => setConfirmingRun(run)}><Rocket size={13} />{busyRun === run.id ? 'Memproses…' : 'Aktifkan'}</button>}</div></td></tr>)}</tbody></table></div>}</GlassCard>
-    {detailRunId !== null && <GlassCard title={`Rincian eksekusi #${detailRunId}`} subtitle="Informasi hasil eksekusi DBSCAN yang dipilih." action={<button className="icon-button" onClick={() => { setDetailRunId(null); setDetail(null); }} aria-label="Tutup detail">×</button>}>{detailLoading ? <StatePanel type="loading" title="Memuat rincian" message="Mengambil informasi eksekusi." /> : detailError ? <StatePanel type="error" title="Rincian tidak tersedia" message={detailError} /> : <RecordDetails record={detail || {}} />}</GlassCard>}
+    <PageHeader eyebrow={tx('ADMIN / RIWAYAT EKSEKUSI', 'ADMIN / EXECUTION HISTORY')} title={tx('Riwayat Eksekusi', 'Execution History')} description={tx('Tinjau hasil DBSCAN dan tentukan hasil yang akan ditampilkan pada WebGIS publik.', 'Review DBSCAN runs and choose which result is published to the public WebGIS.')} action={<SimulationTag />} />
+    <div className="run-filter glass-card"><label>Dataset<select value={datasetId ?? ''} onChange={(e) => setSelectedDatasetId(Number(e.target.value) || null)}><option value="">{tx('Pilih dataset', 'Select dataset')}</option>{datasets.data?.map((item) => <option key={item.id} value={item.id}>{item.dataset_name}</option>)}</select></label><button className="button button-secondary" onClick={runs.reload}><RefreshCw size={14} /> {tx('Muat ulang', 'Reload')}</button></div>
+    {message && <div className="success-panel"><CheckCircle2 size={17} /><div><strong>{tx('Aktivasi berhasil', 'Activation successful')}</strong><span>{message}</span></div></div>}{error && <div className="form-error">{error}</div>}
+    <GlassCard title={tx('Daftar Eksekusi', 'Execution List')}>{runs.loading ? <StatePanel type="loading" title={tx('Memuat riwayat', 'Loading history')} message={tx('Mengambil daftar eksekusi.', 'Fetching execution history.')} /> : runs.error ? <StatePanel type="error" title={tx('Riwayat belum tersedia', 'History unavailable')} message={runs.error} /> : !runs.data?.length ? <StatePanel type="empty" title={tx('Belum ada eksekusi', 'No runs yet')} message={tx('Hasil yang dibuat melalui DBSCAN Final akan muncul di sini.', 'Runs created through Final DBSCAN will appear here.')} /> : <div className="table-scroll"><table className="data-table"><thead><tr><th>{tx('Eksekusi', 'Run')}</th><th>{tx('Eksperimen', 'Experiment')}</th><th>Epsilon (km)</th><th>MinPts</th><th>{tx('Klaster', 'Clusters')}</th><th>{tx('Persentase Noise', 'Noise Percentage')}</th><th>{tx('Skor Silhouette', 'Silhouette Score')}</th><th>Status</th><th>{tx('Aktif', 'Active')}</th><th /></tr></thead><tbody>{runs.data.map((run) => <tr key={run.id} className={run.is_active ? 'job-row-recommended' : undefined}><td><div className="run-id-cell"><strong>#{run.id}</strong>{run.is_active && <span className="webgis-active-badge"><i /> {tx('Aktif di WebGIS', 'Live on WebGIS')}</span>}</div><small className="table-sub">{formatDate(run.created_at)}</small></td><td>#{run.selected_experiment_id}</td><td>{formatNumber(run.eps_km, 2)}</td><td>{run.min_samples}</td><td>{run.cluster_count === null ? '—' : formatNumber(run.cluster_count)}</td><td>{run.noise_percentage === null ? '—' : `${formatNumber(run.noise_percentage, 2)}%`}</td><td>{formatNumber(run.silhouette_score, 4)}</td><td><StatusBadge status={run.status} /></td><td>{run.is_active ? <span className="active-label"><i /> {tx('Aktif', 'Active')}</span> : '—'}</td><td><div className="table-actions"><button className="text-button" onClick={() => void showDetail(run.id)}>{tx('Rincian', 'Details')}</button>{run.status === 'SUCCESS' && !run.is_active && <button className="text-button" disabled={IS_PREVIEW_MODE || busyRun === run.id} onClick={() => setConfirmingRun(run)}><Rocket size={13} />{busyRun === run.id ? tx('Memproses…', 'Processing…') : tx('Aktifkan', 'Activate')}</button>}</div></td></tr>)}</tbody></table></div>}</GlassCard>
+    {detailRunId !== null && <GlassCard title={tx(`Rincian eksekusi #${detailRunId}`, `Execution #${detailRunId} Details`)} subtitle={tx('Informasi hasil eksekusi DBSCAN yang dipilih.', 'Details of the selected DBSCAN execution.')} action={<button className="icon-button" onClick={() => { setDetailRunId(null); setDetail(null); }} aria-label={tx('Tutup detail', 'Close details')}>×</button>}>{detailLoading ? <StatePanel type="loading" title={tx('Memuat rincian', 'Loading details')} message={tx('Mengambil informasi eksekusi.', 'Fetching execution information.')} /> : detailError ? <StatePanel type="error" title={tx('Rincian tidak tersedia', 'Details unavailable')} message={detailError} /> : <RecordDetails record={detail || {}} />}</GlassCard>}
 
     <ConfirmModal
       isOpen={Boolean(confirmingRun)}
       variant="primary"
-      title="Konfirmasi Publikasi WebGIS"
+      title={tx('Konfirmasi Publikasi WebGIS', 'Confirm WebGIS Publication')}
       icon={<Rocket size={22} />}
-      confirmLabel="Ya, Aktifkan Hasil"
-      cancelLabel="Batal"
+      confirmLabel={tx('Ya, Aktifkan Hasil', 'Yes, Activate Run')}
+      cancelLabel={tx('Batal', 'Cancel')}
       loading={busyRun !== null}
       onCancel={() => setConfirmingRun(null)}
       onConfirm={handleConfirmActivate}
@@ -68,11 +70,14 @@ export function RunHistoryPage() {
         confirmingRun ? (
           <div>
             <p>
-              Aktifkan <strong>Eksekusi DBSCAN Final #{confirmingRun.id}</strong> sebagai sumber data utama yang disajikan pada WebGIS publik?
+              {tx(
+                <>Aktifkan <strong>Eksekusi DBSCAN Final #{confirmingRun.id}</strong> sebagai sumber data utama yang disajikan pada WebGIS publik?</>,
+                <>Activate <strong>Final DBSCAN Run #{confirmingRun.id}</strong> as the primary data source presented on the public WebGIS?</>,
+              )}
             </p>
             <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(5, 17, 30, 0.65)', borderRadius: '10px', border: '1px solid rgba(72, 215, 237, 0.25)' }}>
-              <div>Parameter: <strong>ε {formatNumber(confirmingRun.eps_km, 2)} km</strong> · <strong>MinPts {confirmingRun.min_samples}</strong></div>
-              {confirmingRun.cluster_count != null && <div style={{ marginTop: '4px' }}>Hasil: <strong>{formatNumber(confirmingRun.cluster_count)} klaster</strong> · <strong>Noise {formatNumber(confirmingRun.noise_percentage, 2)}%</strong></div>}
+              <div>{tx('Parameter:', 'Parameters:')} <strong>ε {formatNumber(confirmingRun.eps_km, 2)} km</strong> · <strong>MinPts {confirmingRun.min_samples}</strong></div>
+              {confirmingRun.cluster_count != null && <div style={{ marginTop: '4px' }}>{tx('Hasil:', 'Results:')} <strong>{formatNumber(confirmingRun.cluster_count)} {tx('klaster', 'clusters')}</strong> · <strong>Noise {formatNumber(confirmingRun.noise_percentage, 2)}%</strong></div>}
             </div>
           </div>
         ) : null

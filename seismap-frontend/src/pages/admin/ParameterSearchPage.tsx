@@ -18,6 +18,7 @@ import { IS_PREVIEW_MODE } from '../../config/env';
 import { usePipeline } from '../../context/PipelineContext';
 import { useJobPolling } from '../../hooks/useJobPolling';
 import { useResource } from '../../hooks/useResource';
+import { useI18n } from '../../i18n/LanguageContext';
 import {
   GlassCard,
   PageHeader,
@@ -48,6 +49,7 @@ function parseNumberList(value: string): number[] | null {
 }
 
 export function ParameterSearchPage() {
+  const { lang, tx } = useI18n();
   const navigate = useNavigate();
   const datasets = useResource(getDatasets, []);
   const { selectedDatasetId, setSelectedDatasetId, parameterJobId, setParameterJobId } = usePipeline();
@@ -226,16 +228,16 @@ export function ParameterSearchPage() {
   return (
     <div className="page-stack parameter-search-page">
       <PageHeader
-        eyebrow="ADMIN / PERANCANGAN EKSPERIMEN"
-        title="Pencarian Parameter"
-        description="Kirim kandidat parameter untuk diuji dan pantau kemajuan proses eksperimen klasterisasi."
+        eyebrow={tx('ADMIN / PERANCANGAN EKSPERIMEN', 'ADMIN / EXPERIMENT DESIGN')}
+        title={tx('Pencarian Parameter', 'Parameter Search')}
+        description={tx('Kirim kandidat parameter untuk diuji dan pantau kemajuan proses eksperimen klasterisasi.', 'Submit parameter candidates for evaluation and monitor clustering experiment progress.')}
         action={<SimulationTag />}
       />
 
       <div className="parameter-layout parameter-search-layout">
         <GlassCard
-          title="Konfigurasi Pencarian"
-          subtitle="MinPts wajib diisi. Epsilon dievaluasi melalui deteksi knee, kandidat eksplisit, dan grid epsilon standar."
+          title={tx('Konfigurasi Pencarian', 'Search Configuration')}
+          subtitle={tx('MinPts wajib diisi. Epsilon dievaluasi melalui deteksi knee, kandidat eksplisit, dan grid epsilon standar.', 'MinPts is required. Epsilon candidates combine knee detection, explicit inputs, and the standard epsilon grid.')}
         >
           <form className="stack-form" onSubmit={submit}>
             <label>
@@ -245,36 +247,36 @@ export function ParameterSearchPage() {
                 onChange={(event) => setSelectedDatasetId(Number(event.target.value) || null)}
                 disabled={datasets.loading || !datasets.data?.length}
               >
-                <option value="">Pilih dataset</option>
+                <option value="">{tx('Pilih dataset', 'Select dataset')}</option>
                 {datasets.data?.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.dataset_name} · {statusLabel(item.status)}
+                    {item.dataset_name} · {statusLabel(item.status, lang)}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              Kandidat MinPts
+              {tx('Kandidat MinPts', 'MinPts Candidates')}
               <input
                 value={minSamplesText}
                 onChange={(event) => setMinSamplesText(event.target.value)}
-                placeholder="Contoh format: 100, 150, 195, 200"
+                placeholder={tx('Contoh format: 100, 150, 195, 200', 'Example: 100, 150, 195, 200')}
               />
             </label>
             <label>
-              Persentase sensitivitas
+              {tx('Persentase sensitivitas', 'Sensitivity Percentages')}
               <input
                 value={sensitivityText}
                 onChange={(event) => setSensitivityText(event.target.value)}
-                placeholder="Contoh: -20, -10, 0, 10, 20"
+                placeholder={tx('Contoh: -20, -10, 0, 10, 20', 'Example: -20, -10, 0, 10, 20')}
               />
             </label>
             <label>
-              Kandidat Epsilon eksplisit (km)
+              {tx('Kandidat Epsilon eksplisit (km)', 'Explicit Epsilon Candidates (km)')}
               <input
                 value={epsCandidatesText}
                 onChange={(event) => setEpsCandidatesText(event.target.value)}
-                placeholder="Opsional, misalnya: 17.5, 22.5, 27.5, 32.5, 35.0, 37.5"
+                placeholder={tx('Opsional, misalnya: 17.5, 22.5, 27.5, 32.5, 35.0, 37.5', 'Optional, e.g. 17.5, 22.5, 27.5, 32.5, 35.0, 37.5')}
               />
             </label>
             <label className="parameter-grid-toggle">
@@ -283,21 +285,21 @@ export function ParameterSearchPage() {
                 checked={useDefaultGrid}
                 onChange={(event) => setUseDefaultGrid(event.target.checked)}
               />{' '}
-              Gunakan grid epsilon standar (10–100 km)
+              {tx('Gunakan grid epsilon standar (10–100 km)', 'Use standard epsilon grid (10–100 km)')}
             </label>
             <div className="combination-estimate-badge">
               <Sparkles size={14} />
               <span>
-                Estimasi Beban: <strong>{parsedMinSamples.length} MinPts</strong> × <strong>~{estimatedEpsCount} Epsilon</strong> = <strong>~{estimatedCombinations} kombinasi evaluasi</strong>
+                {tx('Estimasi Beban:', 'Estimated Load:')} <strong>{parsedMinSamples.length} MinPts</strong> × <strong>~{estimatedEpsCount} Epsilon</strong> = <strong>~{estimatedCombinations} {tx('kombinasi evaluasi', 'evaluation combinations')}</strong>
               </span>
             </div>
             <div className="inline-notice">
-              Metode: DBSCAN Haversine · Kriteria valid: 2–80 klaster, noise ≤ 40%, dominasi klaster ≤ 60%.
+              {tx('Metode: DBSCAN Haversine · Kriteria valid: 2–80 klaster, noise ≤ 40%, dominasi klaster ≤ 60%.', 'Method: Haversine DBSCAN · Validity criteria: 2–80 clusters, noise ≤ 40%, cluster dominance ≤ 60%.')}
             </div>
             {IS_PREVIEW_MODE && (
               <div className="inline-notice">
                 <span className="notice-dot" />
-                Mode Pratinjau: pencarian parameter tidak dikirim ke server.
+                {tx('Mode Pratinjau: pencarian parameter tidak dikirim ke server.', 'Preview Mode: parameter search is not dispatched to the server.')}
               </div>
             )}
             {error && <div className="form-error">{error}</div>}
@@ -312,24 +314,24 @@ export function ParameterSearchPage() {
                 )
               }
             >
-              {busy ? 'Mengirim permintaan…' : <><Play size={15} /> Jalankan Pencarian Parameter</>}
+              {busy ? tx('Mengirim permintaan…', 'Submitting request…') : <><Play size={15} /> {tx('Jalankan Pencarian Parameter', 'Run Parameter Search')}</>}
             </PrimaryButton>
           </form>
         </GlassCard>
 
         <GlassCard
-          title="Status Pencarian"
-          subtitle="Proses berjalan di latar belakang secara bertahap."
+          title={tx('Status Pencarian', 'Search Status')}
+          subtitle={tx('Proses berjalan di latar belakang secara bertahap.', 'Execution runs asynchronously in stages.')}
         >
           {parameterJobId ? (
             jobState.error ? (
-              <StatePanel type="error" title="Status proses gagal dimuat" message={jobState.error} />
+              <StatePanel type="error" title={tx('Status proses gagal dimuat', 'Failed to load job status')} message={jobState.error} />
             ) : jobState.job ? (
               <div className="job-progress">
                 <div className="job-progress-head">
                   <div>
-                    <span className="eyebrow">PROSES #{jobState.job.id}</span>
-                    <h3>{jobTypeLabel(jobState.job.job_type)}</h3>
+                    <span className="eyebrow">{tx('PROSES', 'JOB')} #{jobState.job.id}</span>
+                    <h3>{jobTypeLabel(jobState.job.job_type, lang)}</h3>
                   </div>
                   <StatusBadge status={jobState.job.status} />
                 </div>
@@ -340,15 +342,15 @@ export function ParameterSearchPage() {
                   <strong>{formatNumber(jobState.job.progress)}%</strong>
                   <span>
                     {jobState.job.current_step
-                      ? processStepLabel(jobState.job.current_step)
-                      : jobState.job.message || 'Menunggu pembaruan status'}
+                      ? processStepLabel(jobState.job.current_step, lang)
+                      : jobState.job.message || tx('Menunggu pembaruan status', 'Waiting for status updates')}
                   </span>
                 </div>
-                {jobState.job.message && <p className="subtle-copy">{friendlyErrorMessage(jobState.job.message)}</p>}
+                {jobState.job.message && <p className="subtle-copy">{friendlyErrorMessage(jobState.job.message, undefined, undefined, lang)}</p>}
                 {jobState.job.status === 'FAILED' && (
                   <div className="form-error">
-                    {friendlyErrorMessage(jobState.job.error_code || 'JOB_FAILED')}{' '}
-                    {jobState.job.message ? `· ${friendlyErrorMessage(jobState.job.message)}` : ''}
+                    {friendlyErrorMessage(jobState.job.error_code || 'JOB_FAILED', undefined, undefined, lang)}{' '}
+                    {jobState.job.message ? `· ${friendlyErrorMessage(jobState.job.message, undefined, undefined, lang)}` : ''}
                   </div>
                 )}
                 <JobLifecycleControls
@@ -363,13 +365,13 @@ export function ParameterSearchPage() {
                 />
               </div>
             ) : (
-              <StatePanel type="loading" title="Menghubungkan ke proses" message="Mengambil status proses." />
+              <StatePanel type="loading" title={tx('Menghubungkan ke proses', 'Connecting to job')} message={tx('Mengambil status proses.', 'Fetching job status.')} />
             )
           ) : (
             <StatePanel
               type="info"
-              title="Belum ada proses aktif"
-              message="Setelah permintaan diterima, status dan kemajuan proses akan ditampilkan di panel ini."
+              title={tx('Belum ada proses aktif', 'No active job')}
+              message={tx('Setelah permintaan diterima, status dan kemajuan proses akan ditampilkan di panel ini.', 'Once submitted, job progress and status updates appear here.')}
             />
           )}
         </GlassCard>
@@ -382,8 +384,8 @@ export function ParameterSearchPage() {
             <GlassCard className="recommendation-card">
               <div className="recommendation-heading">
                 <div>
-                  <span className="eyebrow">REKOMENDASI METODOLOGIS</span>
-                  <h3>Parameter Rekomendasi Terpilih (Eksperimen #{selectedExp.id})</h3>
+                  <span className="eyebrow">{tx('REKOMENDASI METODOLOGIS', 'METHODOLOGICAL RECOMMENDATION')}</span>
+                  <h3>{tx(`Parameter Rekomendasi Terpilih (Eksperimen #${selectedExp.id})`, `Selected Recommended Parameters (Experiment #${selectedExp.id})`)}</h3>
                 </div>
                 <StatusBadge status="RECOMMENDED" />
               </div>
@@ -392,25 +394,25 @@ export function ParameterSearchPage() {
                 <div className="recommendation-item">
                   <span>Epsilon (ε)</span>
                   <strong>{formatNumber(selectedExp.eps_km, 2)} km</strong>
-                  <small>Jarak Haversine</small>
+                  <small>{tx('Jarak Haversine', 'Haversine distance')}</small>
                 </div>
                 <div className="recommendation-item">
                   <span>MinPts</span>
                   <strong>{formatNumber(selectedExp.min_samples)}</strong>
-                  <small>Titik minimum</small>
+                  <small>{tx('Titik minimum', 'Minimum points')}</small>
                 </div>
                 <div className="recommendation-item">
-                  <span>Jumlah Klaster</span>
+                  <span>{tx('Jumlah Klaster', 'Cluster Count')}</span>
                   <strong>{formatNumber(selectedExp.cluster_count)}</strong>
-                  <small>Klaster spasial</small>
+                  <small>{tx('Klaster spasial', 'Spatial clusters')}</small>
                 </div>
                 <div className="recommendation-item">
-                  <span>Persentase Noise</span>
+                  <span>{tx('Persentase Noise', 'Noise Percentage')}</span>
                   <strong>{formatPercent(selectedExp.noise_percentage, 2)}</strong>
-                  <small>Titik terisolasi</small>
+                  <small>{tx('Titik terisolasi', 'Isolated points')}</small>
                 </div>
                 <div className="recommendation-item">
-                  <span>Dominasi Klaster</span>
+                  <span>{tx('Dominasi Klaster', 'Cluster Dominance')}</span>
                   <strong>
                     {selectedExp.largest_cluster_ratio != null
                       ? formatRatioPercent(selectedExp.largest_cluster_ratio, 1)
@@ -418,32 +420,33 @@ export function ParameterSearchPage() {
                   </strong>
                   <small>
                     {selectedExp.max_cluster_size != null
-                      ? `Maks ${formatNumber(selectedExp.max_cluster_size)} titik`
-                      : 'Klaster terbesar'}
+                      ? `${tx('Maks', 'Max')} ${formatNumber(selectedExp.max_cluster_size)} ${tx('titik', 'points')}`
+                      : tx('Klaster terbesar', 'Largest cluster')}
                   </small>
                 </div>
                 <div className="recommendation-item">
-                  <span>Skor Silhouette</span>
+                  <span>{tx('Skor Silhouette', 'Silhouette Score')}</span>
                   <strong>{formatNumber(selectedExp.silhouette_score, 4)}</strong>
-                  <small>Kerapatan klaster</small>
+                  <small>{tx('Kerapatan klaster', 'Cluster cohesion')}</small>
                 </div>
                 <div className="recommendation-item">
-                  <span>Skor Stabilitas</span>
+                  <span>{tx('Skor Stabilitas', 'Stability Score')}</span>
                   <strong>{formatNumber(selectedExp.stability_score, 4)}</strong>
-                  <small>Stabilitas tetangga grid</small>
+                  <small>{tx('Stabilitas tetangga grid', 'Grid neighbor stability')}</small>
                 </div>
                 <div className="recommendation-item">
-                  <span>Skor Rekomendasi</span>
+                  <span>{tx('Skor Rekomendasi', 'Recommendation Score')}</span>
                   <strong>{formatNumber(selectedExp.recommendation_score, 4)}</strong>
-                  <small>Skor gabungan multikriteria</small>
+                  <small>{tx('Skor gabungan multikriteria', 'Multi-criteria composite')}</small>
                 </div>
               </div>
 
               <div className="recommendation-actions">
                 <p>
-                  Eksperimen #{selectedExp.id} merupakan satu-satunya pemenang skoring multikriteria terbobot
-                  (Silhouette 40%, Noise 20%, Dominasi 20%, Stabilitas 20%) dan telah memenuhi seluruh kriteria validitas
-                  tanpa ambiguitas.
+                  {tx(
+                    `Eksperimen #${selectedExp.id} merupakan satu-satunya pemenang skoring multikriteria terbobot (Silhouette 40%, Noise 20%, Dominasi 20%, Stabilitas 20%) dan telah memenuhi seluruh kriteria validitas tanpa ambiguitas.`,
+                    `Experiment #${selectedExp.id} ranks top under weighted multi-criteria scoring (Silhouette 40%, Noise 20%, Dominance 20%, Stability 20%) and satisfies all validity constraints.`,
+                  )}
                 </p>
                 <PrimaryButton
                   onClick={() => {
@@ -452,7 +455,7 @@ export function ParameterSearchPage() {
                     navigate(`/admin/dbscan-final?datasetId=${effectiveDatasetId}&jobId=${currentParameterJob.id}&experimentId=${selectedExp.id}`);
                   }}
                 >
-                  <Workflow size={15} /> Gunakan di DBSCAN Final <ArrowRight size={14} />
+                  <Workflow size={15} /> {tx('Gunakan di DBSCAN Final', 'Use in Final DBSCAN')} <ArrowRight size={14} />
                 </PrimaryButton>
               </div>
             </GlassCard>
@@ -460,17 +463,18 @@ export function ParameterSearchPage() {
             <div className="final-block-notice">
               <AlertTriangle size={18} />
               <div>
-                <strong>Tidak Ada Kombinasi Parameter yang Memenuhi Kriteria Validitas</strong>
+                <strong>{tx('Tidak Ada Kombinasi Parameter yang Memenuhi Kriteria Validitas', 'No Parameter Combination Satisfies Validity Criteria')}</strong>
                 <p>
-                  Seluruh kombinasi parameter yang diuji menghasilkan jumlah klaster, persentase noise, atau dominasi
-                  klaster di luar ambang batas kriteria validitas metodologis. Tidak ada eksperimen yang direkomendasikan
-                  untuk klasterisasi final.
+                  {tx(
+                    'Seluruh kombinasi parameter yang diuji menghasilkan jumlah klaster, persentase noise, atau dominasi klaster di luar ambang batas kriteria validitas metodologis. Tidak ada eksperimen yang direkomendasikan untuk klasterisasi final.',
+                    'All evaluated parameter combinations produced cluster counts, noise ratios, or dominance levels outside methodological validity thresholds. No candidate is recommended.',
+                  )}
                 </p>
               </div>
             </div>
           ) : (
             <div className="inline-notice">
-              <Info size={15} /> Status rekomendasi multikriteria belum tersedia untuk proses ini.
+              <Info size={15} /> {tx('Status rekomendasi multikriteria belum tersedia untuk proses ini.', 'Multi-criteria recommendation status is unavailable for this job.')}
             </div>
           )}
         </>
@@ -479,8 +483,8 @@ export function ParameterSearchPage() {
       {/* RINGKASAN DETEKSI KNEE PER MINPTS */}
       {kneeSummary && kneeSummary.length > 0 && (
         <GlassCard
-          title="Ringkasan Deteksi Knee (p95 per MinPts)"
-          subtitle="Nilai Epsilon knee dan persentil jarak k-distance untuk setiap kandidat MinPts yang dianalisis."
+          title={tx('Ringkasan Deteksi Knee (p95 per MinPts)', 'Knee Detection Summary (p95 per MinPts)')}
+          subtitle={tx('Nilai Epsilon knee dan persentil jarak k-distance untuk setiap kandidat MinPts yang dianalisis.', 'Detected knee Epsilon values and k-distance percentiles for each evaluated MinPts candidate.')}
         >
           <div className="table-scroll">
             <table className="data-table">
@@ -491,7 +495,7 @@ export function ParameterSearchPage() {
                   <th>p90 (km)</th>
                   <th>p95 (km)</th>
                   <th>p98 (km)</th>
-                  <th>Status Deteksi</th>
+                  <th>{tx('Status Deteksi', 'Detection Status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -518,26 +522,26 @@ export function ParameterSearchPage() {
       {/* TRANSPARANSI METODOLOGI: AMBANG BATAS & BOBOT */}
       {(validityThresh || recWeights) && (
         <details className="transparency-details">
-          <summary>Transparansi Metodologi: Ambang Batas Validitas & Bobot Rekomendasi</summary>
+          <summary>{tx('Transparansi Metodologi: Ambang Batas Validitas & Bobot Rekomendasi', 'Methodology Transparency: Validity Thresholds & Recommendation Weights')}</summary>
           <div className="transparency-grid">
             {validityThresh && (
               <div className="transparency-box">
-                <h4>Ambang Batas Validitas</h4>
+                <h4>{tx('Ambang Batas Validitas', 'Validity Thresholds')}</h4>
                 <ul>
                   <li>
-                    <span>Jumlah Klaster Minimum</span>
-                    <strong>{validityThresh.min_clusters} klaster</strong>
+                    <span>{tx('Jumlah Klaster Minimum', 'Minimum Clusters')}</span>
+                    <strong>{validityThresh.min_clusters} {tx('klaster', 'clusters')}</strong>
                   </li>
                   <li>
-                    <span>Jumlah Klaster Maksimum</span>
-                    <strong>{validityThresh.max_clusters} klaster</strong>
+                    <span>{tx('Jumlah Klaster Maksimum', 'Maximum Clusters')}</span>
+                    <strong>{validityThresh.max_clusters} {tx('klaster', 'clusters')}</strong>
                   </li>
                   <li>
-                    <span>Persentase Noise Maksimum</span>
+                    <span>{tx('Persentase Noise Maksimum', 'Maximum Noise Percentage')}</span>
                     <strong>{formatPercent(validityThresh.max_noise_percentage, 1)}</strong>
                   </li>
                   <li>
-                    <span>Dominasi Klaster Maksimum</span>
+                    <span>{tx('Dominasi Klaster Maksimum', 'Maximum Cluster Dominance')}</span>
                     <strong>{formatRatioPercent(validityThresh.max_largest_cluster_ratio, 1)}</strong>
                   </li>
                 </ul>
@@ -545,23 +549,23 @@ export function ParameterSearchPage() {
             )}
             {recWeights && (
               <div className="transparency-box">
-                <h4>Bobot Multikriteria Rekomendasi</h4>
+                <h4>{tx('Bobot Multikriteria Rekomendasi', 'Multi-Criteria Recommendation Weights')}</h4>
                 <ul>
                   <li>
-                    <span>Skor Silhouette</span>
-                    <strong>{formatRatioPercent(recWeights.silhouette, 0)} <small>(Makin tinggi makin baik)</small></strong>
+                    <span>{tx('Skor Silhouette', 'Silhouette Score')}</span>
+                    <strong>{formatRatioPercent(recWeights.silhouette, 0)} <small>{tx('(Makin tinggi makin baik)', '(Higher is better)')}</small></strong>
                   </li>
                   <li>
-                    <span>Persentase Noise</span>
-                    <strong>{formatRatioPercent(recWeights.noise_percentage, 0)} <small>(Makin rendah makin baik)</small></strong>
+                    <span>{tx('Persentase Noise', 'Noise Percentage')}</span>
+                    <strong>{formatRatioPercent(recWeights.noise_percentage, 0)} <small>{tx('(Makin rendah makin baik)', '(Lower is better)')}</small></strong>
                   </li>
                   <li>
-                    <span>Dominasi Klaster</span>
-                    <strong>{formatRatioPercent(recWeights.largest_cluster_ratio, 0)} <small>(Makin rendah makin baik)</small></strong>
+                    <span>{tx('Dominasi Klaster', 'Cluster Dominance')}</span>
+                    <strong>{formatRatioPercent(recWeights.largest_cluster_ratio, 0)} <small>{tx('(Makin rendah makin baik)', '(Lower is better)')}</small></strong>
                   </li>
                   <li>
-                    <span>Skor Stabilitas Grid</span>
-                    <strong>{formatRatioPercent(recWeights.stability_score, 0)} <small>(Makin tinggi makin baik)</small></strong>
+                    <span>{tx('Skor Stabilitas Grid', 'Grid Stability Score')}</span>
+                    <strong>{formatRatioPercent(recWeights.stability_score, 0)} <small>{tx('(Makin tinggi makin baik)', '(Higher is better)')}</small></strong>
                   </li>
                 </ul>
               </div>
@@ -572,36 +576,36 @@ export function ParameterSearchPage() {
 
       {/* METADATA AKTUAL DARI JOB */}
       {jobMetadata && (
-        <GlassCard title="Konfigurasi Aktual Proses" subtitle="Rincian konfigurasi parameter yang diterapkan saat proses berjalan.">
+        <GlassCard title={tx('Konfigurasi Aktual Proses', 'Actual Job Configuration')} subtitle={tx('Rincian konfigurasi parameter yang diterapkan saat proses berjalan.', 'Parameter configuration details recorded during job execution.')}>
           <div className="metadata-grid">
-            <div><strong>Versi metode</strong><p>{jobMetadata.method_version ?? '—'}</p></div>
-            <div><strong>Mode kombinasi</strong><p>{jobMetadata.combination_mode ?? '—'}</p></div>
-            <div><strong>Jumlah kandidat epsilon</strong><p>{jobMetadata.epsilon_candidate_count ?? '—'}</p></div>
+            <div><strong>{tx('Versi metode', 'Method version')}</strong><p>{jobMetadata.method_version ?? '—'}</p></div>
+            <div><strong>{tx('Mode kombinasi', 'Combination mode')}</strong><p>{jobMetadata.combination_mode ?? '—'}</p></div>
+            <div><strong>{tx('Jumlah kandidat epsilon', 'Epsilon candidate count')}</strong><p>{jobMetadata.epsilon_candidate_count ?? '—'}</p></div>
             <div>
-              <strong>Pembulatan epsilon</strong>
+              <strong>{tx('Pembulatan epsilon', 'Epsilon rounding')}</strong>
               <p>
                 {(jobMetadata.epsilon_rounding_km ?? jobMetadata.rounding_km) != null
                   ? `${jobMetadata.epsilon_rounding_km ?? jobMetadata.rounding_km} km`
                   : '—'}
               </p>
             </div>
-            <div><strong>Grid standar (km)</strong><p>{(jobMetadata.default_grid_km ?? jobMetadata.default_grid)?.join(', ') || '—'}</p></div>
-            <div><strong>Kandidat epsilon aktual (km)</strong><p>{jobMetadata.epsilon_candidates_km?.join(', ') || '—'}</p></div>
-            <div><strong>Sensitivitas (%)</strong><p>{jobMetadata.sensitivity_percentages?.join(', ') || '—'}</p></div>
+            <div><strong>{tx('Grid standar (km)', 'Standard grid (km)')}</strong><p>{(jobMetadata.default_grid_km ?? jobMetadata.default_grid)?.join(', ') || '—'}</p></div>
+            <div><strong>{tx('Kandidat epsilon aktual (km)', 'Actual epsilon candidates (km)')}</strong><p>{jobMetadata.epsilon_candidates_km?.join(', ') || '—'}</p></div>
+            <div><strong>{tx('Sensitivitas (%)', 'Sensitivity (%)')}</strong><p>{jobMetadata.sensitivity_percentages?.join(', ') || '—'}</p></div>
             <div>
-              <strong>Jumlah kandidat per sumber</strong>
+              <strong>{tx('Jumlah kandidat per sumber', 'Candidates per source')}</strong>
               <p>
                 {jobMetadata.source_candidate_counts
                   ? Object.entries(jobMetadata.source_candidate_counts).map(([key, value]) => `${key}: ${value}`).join(' · ')
                   : '—'}
               </p>
             </div>
-            <div><strong>Strategi kandidat epsilon</strong><p>{jobMetadata.epsilon_candidate_strategy ?? '—'}</p></div>
-            <div><strong>Kombinasi diuji</strong><p>{jobMetadata.combination_count ?? '—'}</p></div>
-            <div><strong>MinPts kandidat</strong><p>{jobMetadata.min_samples_candidates?.join(', ') || '—'}</p></div>
-            <div><strong>Grid standar digunakan</strong><p>{jobMetadata.use_default_grid == null ? '—' : jobMetadata.use_default_grid ? 'Ya' : 'Tidak'}</p></div>
+            <div><strong>{tx('Strategi kandidat epsilon', 'Epsilon candidate strategy')}</strong><p>{jobMetadata.epsilon_candidate_strategy ?? '—'}</p></div>
+            <div><strong>{tx('Kombinasi diuji', 'Evaluated combinations')}</strong><p>{jobMetadata.combination_count ?? '—'}</p></div>
+            <div><strong>{tx('MinPts kandidat', 'MinPts candidates')}</strong><p>{jobMetadata.min_samples_candidates?.join(', ') || '—'}</p></div>
+            <div><strong>{tx('Grid standar digunakan', 'Standard grid enabled')}</strong><p>{jobMetadata.use_default_grid == null ? '—' : jobMetadata.use_default_grid ? tx('Ya', 'Yes') : tx('Tidak', 'No')}</p></div>
             <div>
-              <strong>Status kandidat</strong>
+              <strong>{tx('Status kandidat', 'Candidate status')}</strong>
               <p>
                 {typeof jobMetadata.candidate_status === 'string'
                   ? jobMetadata.candidate_status
@@ -625,11 +629,11 @@ export function ParameterSearchPage() {
 
       {/* TABEL HASIL EKSPERIMEN LENGKAP */}
       <GlassCard
-        title="Hasil Eksperimen"
-        subtitle="Seluruh hasil dievaluasi dengan kriteria validitas metodologis dan skoring multikriteria terbobot."
+        title={tx('Hasil Eksperimen', 'Experiment Results')}
+        subtitle={tx('Seluruh hasil dievaluasi dengan kriteria validitas metodologis dan skoring multikriteria terbobot.', 'All outcomes are evaluated using methodological validity criteria and weighted multi-criteria scoring.')}
       >
         {experimentError ? (
-          <StatePanel type="error" title="Eksperimen belum tersedia" message={experimentError} />
+          <StatePanel type="error" title={tx('Eksperimen belum tersedia', 'Experiments unavailable')} message={experimentError} />
         ) : experiments?.length ? (
           <>
             <div className="table-filter-bar">
@@ -639,38 +643,38 @@ export function ParameterSearchPage() {
                   className={`filter-chip ${filterMode === 'ALL' ? 'active' : ''}`}
                   onClick={() => setFilterMode('ALL')}
                 >
-                  Semua ({experiments.length})
+                  {tx('Semua', 'All')} ({experiments.length})
                 </button>
                 <button
                   type="button"
                   className={`filter-chip ${filterMode === 'VALID' ? 'active' : ''}`}
                   onClick={() => setFilterMode('VALID')}
                 >
-                  Hanya Valid ({validCount})
+                  {tx('Hanya Valid', 'Valid Only')} ({validCount})
                 </button>
                 <button
                   type="button"
                   className={`filter-chip ${filterMode === 'RECOMMENDED' ? 'active' : ''}`}
                   onClick={() => setFilterMode('RECOMMENDED')}
                 >
-                  Direkomendasikan ({recommendedCount})
+                  {tx('Direkomendasikan', 'Recommended')} ({recommendedCount})
                 </button>
               </div>
 
               <div className="sort-selector">
                 <Filter size={13} />
-                <span>Urutkan:</span>
+                <span>{tx('Urutkan:', 'Sort:')}</span>
                 <select
                   value={sortField}
                   onChange={(event) =>
                     setSortField(event.target.value as 'DEFAULT' | 'SCORE' | 'SILHOUETTE' | 'EPS' | 'MINPTS')
                   }
                 >
-                  <option value="DEFAULT">Urutan Default (Rekomendasi & Skor)</option>
-                  <option value="SCORE">Skor Rekomendasi Tertinggi</option>
-                  <option value="SILHOUETTE">Skor Silhouette Tertinggi</option>
-                  <option value="EPS">Epsilon (Terkecil ke Terbesar)</option>
-                  <option value="MINPTS">MinPts (Terkecil ke Terbesar)</option>
+                  <option value="DEFAULT">{tx('Urutan Default (Rekomendasi & Skor)', 'Default (Recommendation & Score)')}</option>
+                  <option value="SCORE">{tx('Skor Rekomendasi Tertinggi', 'Highest Recommendation Score')}</option>
+                  <option value="SILHOUETTE">{tx('Skor Silhouette Tertinggi', 'Highest Silhouette Score')}</option>
+                  <option value="EPS">{tx('Epsilon (Terkecil ke Terbesar)', 'Epsilon (Ascending)')}</option>
+                  <option value="MINPTS">{tx('MinPts (Terkecil ke Terbesar)', 'MinPts (Ascending)')}</option>
                 </select>
               </div>
             </div>
@@ -682,15 +686,15 @@ export function ParameterSearchPage() {
                     <th>ID</th>
                     <th>ε (km)</th>
                     <th>MinPts</th>
-                    <th>Klaster</th>
-                    <th>Persentase Noise</th>
-                    <th>Dominasi Klaster</th>
+                    <th>{tx('Klaster', 'Clusters')}</th>
+                    <th>{tx('Persentase Noise', 'Noise Percentage')}</th>
+                    <th>{tx('Dominasi Klaster', 'Cluster Dominance')}</th>
                     <th>Silhouette</th>
-                    <th>Stabilitas</th>
-                    <th>Skor Rekomendasi</th>
-                    <th>Validitas</th>
-                    <th>Rekomendasi</th>
-                    <th>Aksi</th>
+                    <th>{tx('Stabilitas', 'Stability')}</th>
+                    <th>{tx('Skor Rekomendasi', 'Rec. Score')}</th>
+                    <th>{tx('Validitas', 'Validity')}</th>
+                    <th>{tx('Rekomendasi', 'Recommendation')}</th>
+                    <th>{tx('Aksi', 'Action')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -719,7 +723,7 @@ export function ParameterSearchPage() {
                               : '—'}
                           </span>
                           {item.max_cluster_size != null && (
-                            <small className="table-sub">Maks: {formatNumber(item.max_cluster_size)} titik</small>
+                            <small className="table-sub">{tx('Maks:', 'Max:')} {formatNumber(item.max_cluster_size)} {tx('titik', 'points')}</small>
                           )}
                         </td>
                         <td>{item.silhouette_score != null ? formatNumber(item.silhouette_score, 4) : '—'}</td>
@@ -741,15 +745,15 @@ export function ParameterSearchPage() {
                               <StatusBadge status="INVALID" />
                               <small className="invalid-subtext">
                                 {item.invalid_reasons && item.invalid_reasons.length > 0
-                                  ? item.invalid_reasons.map((r) => formatInvalidReason(r, jobMetadata?.validity_thresholds)).join('; ')
-                                  : item.invalid_reason || 'Tidak memenuhi ambang batas'}
+                                  ? item.invalid_reasons.map((r) => formatInvalidReason(r, jobMetadata?.validity_thresholds, lang)).join('; ')
+                                  : item.invalid_reason || tx('Tidak memenuhi ambang batas', 'Outside validity thresholds')}
                               </small>
                             </div>
                           )}
                         </td>
                         <td>
                           {item.is_recommended ? (
-                            <span className="recommended-label">Direkomendasikan</span>
+                            <span className="recommended-label">{tx('Direkomendasikan', 'Recommended')}</span>
                           ) : (
                             '—'
                           )}
@@ -766,7 +770,7 @@ export function ParameterSearchPage() {
                                 navigate(`/admin/dbscan-final?datasetId=${effectiveDatasetId}&jobId=${currentParameterJob?.id ?? ''}&experimentId=${item.id}`);
                               }}
                             >
-                              Gunakan di DBSCAN Final <ArrowRight size={12} />
+                              {tx('Gunakan di DBSCAN Final', 'Use in Final DBSCAN')} <ArrowRight size={12} />
                             </button>
                           ) : (
                             '—'
@@ -782,8 +786,8 @@ export function ParameterSearchPage() {
         ) : (
           <StatePanel
             type="empty"
-            title="Belum ada hasil eksperimen"
-            message="Hasil akan muncul setelah proses Pencarian Parameter selesai."
+            title={tx('Belum ada hasil eksperimen', 'No experiment results yet')}
+            message={tx('Hasil akan muncul setelah proses Pencarian Parameter selesai.', 'Results will appear after Parameter Search completes.')}
           />
         )}
       </GlassCard>
@@ -791,8 +795,10 @@ export function ParameterSearchPage() {
       <div className="admin-note">
         <FlaskConical size={16} />
         <span>
-          Penanda rekomendasi dan skor multikriteria merupakan hasil evaluasi berdasarkan kriteria validitas metodologis untuk membantu
-          pengambilan keputusan penelitian DBSCAN Gempa Indonesia.
+          {tx(
+            'Penanda rekomendasi dan skor multikriteria merupakan hasil evaluasi berdasarkan kriteria validitas metodologis untuk membantu pengambilan keputusan penelitian DBSCAN Gempa Indonesia.',
+            'Recommendation tags and multi-criteria scores reflect objective evaluation against methodological validity criteria for Indonesia Earthquake DBSCAN research.',
+          )}
         </span>
         <ArrowRight size={14} />
       </div>

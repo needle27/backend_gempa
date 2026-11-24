@@ -3,6 +3,7 @@ import { ChevronDown, Compass, Crosshair, Filter, Info, LocateFixed, MapPinned, 
 import { getPublicMetadata, getPublicSummary, getResearchEarthquakes } from '../../api/services';
 import { ClusterMap } from '../../components/ClusterMap';
 import { PageHeader, SimulationTag, StatePanel, formatNumber } from '../../components/ui';
+import { useI18n } from '../../i18n/LanguageContext';
 import { formatDatasetYearRange, statusLabel } from '../../utils/presentation';
 import { clusterColor, NOISE_COLOR } from '../../utils/clusterColors';
 import {
@@ -56,6 +57,7 @@ async function getAllResearchEarthquakes(
 }
 
 export function ClusterMapPage() {
+  const { lang, tx } = useI18n();
   const [mapState, setMapState] = useState<MapLoadState>(() => {
     const mem = getMemoryCachedMapDataset();
     if (mem) {
@@ -276,61 +278,61 @@ export function ClusterMapPage() {
   }, [isDrawerOpen]);
 
   return <div className="page-stack public-map-page">
-    <PageHeader eyebrow="WEBGIS PUBLIK / KLASTER SPASIAL" title="Peta Klaster" description="Jelajahi lokasi kejadian gempa dan hasil pengelompokan spasial DBSCAN pada cakupan wilayah penelitian Indonesia." action={<SimulationTag />} />
+    <PageHeader eyebrow={tx('WEBGIS PUBLIK / KLASTER SPASIAL', 'PUBLIC WEBGIS / SPATIAL CLUSTERS')} title={tx('Peta Klaster', 'Cluster Map')} description={tx('Jelajahi lokasi kejadian gempa dan hasil pengelompokan spasial DBSCAN pada cakupan wilayah penelitian Indonesia.', 'Explore earthquake event locations and DBSCAN spatial clustering outputs across the Indonesian research study area.')} action={<SimulationTag />} />
 
     <section className="map-explainer glass-card">
-      <div className="map-explainer-heading"><span className="map-explainer-icon"><MapPinned size={20} /></span><div><span className="eyebrow">PANDUAN PETA</span><h2>Setiap titik punya konteks spasial</h2><p>Peta menampilkan kejadian dari dataset penelitian pada hasil DBSCAN aktif. Pilih klaster untuk memusatkan perhatian atau tampilkan Noise secara terpisah.</p></div></div>
+      <div className="map-explainer-heading"><span className="map-explainer-icon"><MapPinned size={20} /></span><div><span className="eyebrow">{tx('PANDUAN PETA', 'MAP GUIDE')}</span><h2>{tx('Setiap titik punya konteks spasial', 'Every point has spatial context')}</h2><p>{tx('Peta menampilkan kejadian dari dataset penelitian pada hasil DBSCAN aktif. Pilih klaster untuk memusatkan perhatian atau tampilkan Noise secara terpisah.', 'The map renders earthquake events from the active DBSCAN run. Filter by a specific cluster or inspect Noise points separately.')}</p></div></div>
       <div className="map-explainer-grid">
-        <article><span className="map-key cluster-key" /><div><strong>Anggota klaster</strong><p>Warna marker membedakan kelompok. Nomor ID klaster adalah label identitas, bukan urutan atau tingkat bahaya.</p></div></article>
-        <article><span className="map-key noise-key" /><div><strong>Noise (−1)</strong><p>Titik yang tidak masuk ke kelompok berdasarkan kombinasi parameter DBSCAN pada hasil tersebut.</p></div></article>
-        <article><span className="map-key coordinate-key"><Crosshair size={14} /></span><div><strong>Posisi kejadian</strong><p>Marker ditempatkan berdasarkan latitude dan longitude dari data penelitian.</p></div></article>
+        <article><span className="map-key cluster-key" /><div><strong>{tx('Anggota klaster', 'Cluster member')}</strong><p>{tx('Warna marker membedakan kelompok. Nomor ID klaster adalah label identitas, bukan urutan atau tingkat bahaya.', 'Marker colors distinguish groups. Cluster IDs are nominal identifiers, not rankings or hazard levels.')}</p></div></article>
+        <article><span className="map-key noise-key" /><div><strong>Noise (−1)</strong><p>{tx('Titik yang tidak masuk ke kelompok berdasarkan kombinasi parameter DBSCAN pada hasil tersebut.', 'Points that did not meet density thresholds to join any cluster under current DBSCAN parameters.')}</p></div></article>
+        <article><span className="map-key coordinate-key"><Crosshair size={14} /></span><div><strong>{tx('Posisi kejadian', 'Event position')}</strong><p>{tx('Marker ditempatkan berdasarkan latitude dan longitude dari data penelitian.', 'Markers are plotted by event latitude and longitude from the research dataset.')}</p></div></article>
       </div>
     </section>
 
-    <div className="map-scope-strip"><span><Compass size={15} />METODE: DBSCAN · HAVERSINE</span><span><MapPinned size={15} />CAKUPAN: LAT −15° s.d. 10° · LON 90° s.d. 145°</span><span><Info size={15} />SUMBER: {datasetYearRange ? `DATASET PENELITIAN ${datasetYearRange}` : 'DATASET PENELITIAN AKTIF'}</span></div>
+    <div className="map-scope-strip"><span><Compass size={15} />{tx('METODE: DBSCAN · HAVERSINE', 'METHOD: DBSCAN · HAVERSINE')}</span><span><MapPinned size={15} />{tx('CAKUPAN: LAT −15° s.d. 10° · LON 90° s.d. 145°', 'BOUNDS: LAT −15° to 10° · LON 90° to 145°')}</span><span><Info size={15} />{tx('SUMBER:', 'SOURCE:')} {datasetYearRange ? tx(`DATASET PENELITIAN ${datasetYearRange}`, `RESEARCH DATASET ${datasetYearRange}`) : tx('DATASET PENELITIAN AKTIF', 'ACTIVE RESEARCH DATASET')}</span></div>
 
     {mapState.loading ? (
       <StatePanel
         type="loading"
-        title="Memuat Peta Klasterisasi"
-        message="Menyiapkan data spasial kejadian gempa dari server penelitian."
+        title={tx('Memuat Peta Klasterisasi', 'Loading Cluster Map')}
+        message={tx('Menyiapkan data spasial kejadian gempa dari server penelitian.', 'Preparing earthquake spatial records from the research server.')}
         progress={mapState.progress}
       />
     ) : mapState.error ? (
       <StatePanel
         type="error"
-        title="Peta belum dapat ditampilkan"
+        title={tx('Peta belum dapat ditampilkan', 'Unable to load map')}
         message={mapState.error}
         action={
           <button type="button" className="button button-secondary" onClick={() => setReloadNonce((n) => n + 1)}>
-            <RefreshCw size={15} /> Coba lagi
+            <RefreshCw size={15} /> {tx('Coba lagi', 'Try again')}
           </button>
         }
       />
     ) : !metadata?.run ? (
       <StatePanel
         type="empty"
-        title="Belum ada hasil penelitian yang dipublikasikan"
-        message="Peta akan menampilkan titik dan label klaster setelah admin mengaktifkan hasil DBSCAN berstatus Berhasil. Informasi gempa terkini BMKG tidak digunakan sebagai pengganti dataset penelitian."
+        title={tx('Belum ada hasil penelitian yang dipublikasikan', 'No published research run yet')}
+        message={tx('Peta akan menampilkan titik dan label klaster setelah admin mengaktifkan hasil DBSCAN berstatus Berhasil. Informasi gempa terkini BMKG tidak digunakan sebagai pengganti dataset penelitian.', 'The map will display points and cluster labels once an administrator activates a successful DBSCAN run. Live BMKG earthquake feeds are kept separate from the research dataset.')}
       />
     ) : <>
-      {summary && <div className="map-run-summary"><div><span>JUMLAH TITIK</span><strong>{formatNumber(summary.total_points)}</strong></div><div><span>JUMLAH KLASTER</span><strong>{formatNumber(summary.cluster_count)}</strong></div><div><span>TITIK NOISE</span><strong>{formatNumber(summary.noise_count)} <small>({formatNumber(summary.noise_percentage, 2)}%)</small></strong></div></div>}
+      {summary && <div className="map-run-summary"><div><span>{tx('JUMLAH TITIK', 'TOTAL POINTS')}</span><strong>{formatNumber(summary.total_points)}</strong></div><div><span>{tx('JUMLAH KLASTER', 'CLUSTER COUNT')}</span><strong>{formatNumber(summary.cluster_count)}</strong></div><div><span>{tx('TITIK NOISE', 'NOISE POINTS')}</span><strong>{formatNumber(summary.noise_count)} <small>({formatNumber(summary.noise_percentage, 2)}%)</small></strong></div></div>}
 
       {/* Desktop Toolbar (>= lg) */}
-      <div className="map-toolbar glass-card"><div className="map-toolbar-title"><span className="live-indicator" /><div><strong>Peta penelitian Indonesia</strong><small>Hasil #{metadata.run.id} · {metadata.run.metric} · status {statusLabel(metadata.run.status)}</small></div></div><div className="map-filters"><label><Filter size={14} /><select value={clusterFilter} onChange={(e) => handleClusterFilterChange(e.target.value)}><option value="all">Semua klaster</option>{clusters.map((id) => <option key={id} value={id}>Klaster {id}</option>)}</select></label><label className="toggle-label"><input type="checkbox" checked={noiseOnly} onChange={(e) => handleNoiseOnlyChange(e.target.checked)} /> Hanya Noise</label><button className="icon-button" onClick={resetFilters} aria-label="Reset filter"><RefreshCw size={15} /></button></div></div>
+      <div className="map-toolbar glass-card"><div className="map-toolbar-title"><span className="live-indicator" /><div><strong>{tx('Peta penelitian Indonesia', 'Indonesia research map')}</strong><small>{tx('Hasil', 'Run')} #{metadata.run.id} · {metadata.run.metric} · {tx('status', 'status')} {statusLabel(metadata.run.status, lang)}</small></div></div><div className="map-filters"><label><Filter size={14} /><select value={clusterFilter} onChange={(e) => handleClusterFilterChange(e.target.value)}><option value="all">{tx('Semua klaster', 'All clusters')}</option>{clusters.map((id) => <option key={id} value={id}>{tx('Klaster', 'Cluster')} {id}</option>)}</select></label><label className="toggle-label"><input type="checkbox" checked={noiseOnly} onChange={(e) => handleNoiseOnlyChange(e.target.checked)} /> {tx('Hanya Noise', 'Noise Only')}</label><button className="icon-button" onClick={resetFilters} aria-label={tx('Reset filter', 'Reset filter')}><RefreshCw size={15} /></button></div></div>
 
       {/* Mobile Action Bar (< lg): sejajar rapi di atas peta, tidak menutupi konten */}
       <div className="map-mobile-bar glass-card lg:hidden">
         <div className="map-mobile-bar-info">
           <span className="live-indicator" />
           <div>
-            <strong>Hasil #{metadata.run.id}</strong>
+            <strong>{tx('Hasil', 'Run')} #{metadata.run.id}</strong>
             <small>
               {noiseOnly
-                ? 'Filter aktif: Hanya Noise (−1)'
+                ? tx('Filter aktif: Hanya Noise (−1)', 'Active filter: Noise Only (−1)')
                 : clusterFilter !== 'all'
-                  ? `Filter aktif: Klaster ${clusterFilter}`
-                  : `${formatNumber(points?.length ?? 0)} titik aktif`}
+                  ? tx(`Filter aktif: Klaster ${clusterFilter}`, `Active filter: Cluster ${clusterFilter}`)
+                  : `${formatNumber(points?.length ?? 0)} ${tx('titik aktif', 'active points')}`}
             </small>
           </div>
         </div>
@@ -340,8 +342,8 @@ export function ClusterMapPage() {
               type="button"
               className="icon-button"
               onClick={resetFilters}
-              aria-label="Reset filter"
-              title="Reset filter"
+              aria-label={tx('Reset filter', 'Reset filter')}
+              title={tx('Reset filter', 'Reset filter')}
             >
               <RefreshCw size={14} />
             </button>
@@ -350,7 +352,7 @@ export function ClusterMapPage() {
             type="button"
             onClick={() => setIsDrawerOpen(true)}
             className="map-mobile-filter-btn"
-            aria-label="Buka filter peta"
+            aria-label={tx('Buka filter peta', 'Open map filters')}
           >
             <Filter size={15} />
             <span>Filter</span>
@@ -378,15 +380,15 @@ export function ClusterMapPage() {
               <div className="map-empty-overlay" role="status" aria-live="polite">
                 <div className="map-empty-card glass-card">
                   <Crosshair size={20} />
-                  <strong>Tidak ada titik gempa untuk filter saat ini</strong>
+                  <strong>{tx('Tidak ada titik gempa untuk filter saat ini', 'No earthquake points match the current filter')}</strong>
                   <p>
                     {noiseOnly
-                      ? 'Tidak terdapat titik noise (−1) pada hasil klasterisasi aktif atau filter terlalu ketat.'
-                      : 'Kombinasi filter yang dipilih menghasilkan 0 kejadian gempa.'}
+                      ? tx('Tidak terdapat titik noise (−1) pada hasil klasterisasi aktif atau filter terlalu ketat.', 'No noise (−1) points exist in the active run or the filter is too restrictive.')
+                      : tx('Kombinasi filter yang dipilih menghasilkan 0 kejadian gempa.', 'The selected filter combination returned 0 earthquake events.')}
                   </p>
                   {activeFilterCount > 0 && (
                     <button type="button" className="button button-secondary" onClick={resetFilters}>
-                      <RefreshCw size={14} /> Reset Filter
+                      <RefreshCw size={14} /> {tx('Reset Filter', 'Reset Filter')}
                     </button>
                   )}
                 </div>
@@ -403,8 +405,8 @@ export function ClusterMapPage() {
               aria-controls="cluster-map-legend"
             >
               <span>
-                <strong>Legenda Peta</strong>
-                <small>{formatNumber(clusters.length)} klaster + Noise (−1)</small>
+                <strong>{tx('Legenda Peta', 'Map Legend')}</strong>
+                <small>{formatNumber(clusters.length)} {tx('klaster', 'clusters')} + Noise (−1)</small>
               </span>
               <ChevronDown size={16} className={isLegendOpen ? 'rotated' : ''} />
             </button>
@@ -412,11 +414,11 @@ export function ClusterMapPage() {
               {clusters.slice(0, 8).map((clusterId) => (
                 <span key={clusterId}>
                   <i className="legend-dot" style={{ backgroundColor: clusterColor(clusterId) }} />
-                  Klaster {clusterId}
+                  {tx('Klaster', 'Cluster')} {clusterId}
                 </span>
               ))}
               {clusters.length > 8 && (
-                <span className="legend-more">+{formatNumber(clusters.length - 8)} klaster lainnya</span>
+                <span className="legend-more">+{formatNumber(clusters.length - 8)} {tx('klaster lainnya', 'more clusters')}</span>
               )}
               <span>
                 <i className="legend-dot" style={{ backgroundColor: NOISE_COLOR }} />
@@ -426,8 +428,8 @@ export function ClusterMapPage() {
           </div>
           <div className="map-all-points-note">
             {activeFilterCount > 0
-              ? `Menampilkan ${formatNumber(filtered.length)} dari ${formatNumber(points?.length ?? 0)} titik gempa sesuai filter.`
-              : `Menampilkan seluruh ${formatNumber(points?.length ?? 0)} titik gempa pada hasil aktif.`}
+              ? tx(`Menampilkan ${formatNumber(filtered.length)} dari ${formatNumber(points?.length ?? 0)} titik gempa sesuai filter.`, `Showing ${formatNumber(filtered.length)} of ${formatNumber(points?.length ?? 0)} earthquake points matching filter.`)
+              : tx(`Menampilkan seluruh ${formatNumber(points?.length ?? 0)} titik gempa pada hasil aktif.`, `Showing all ${formatNumber(points?.length ?? 0)} earthquake points in the active run.`)}
           </div>
         </div>
 
@@ -441,7 +443,7 @@ export function ClusterMapPage() {
           <div className="map-drawer-header lg:hidden">
             <div className="map-drawer-title">
               <Filter size={16} />
-              <span>Filter & Parameter</span>
+              <span>{tx('Filter & Parameter', 'Filter & Parameters')}</span>
               {activeFilterCount > 0 && (
                 <span className="filter-badge">{activeFilterCount}</span>
               )}
@@ -450,7 +452,7 @@ export function ClusterMapPage() {
               type="button"
               className="map-drawer-close"
               onClick={() => setIsDrawerOpen(false)}
-              aria-label="Tutup panel filter"
+              aria-label={tx('Tutup panel filter', 'Close filter panel')}
             >
               <X size={18} />
             </button>
@@ -459,14 +461,14 @@ export function ClusterMapPage() {
           {/* Mobile Filter Controls (< lg) */}
           <div className="map-drawer-filters-mobile lg:hidden glass-card">
             <label className="drawer-filter-label">
-              <span>PILIH KLASTER</span>
+              <span>{tx('PILIH KLASTER', 'SELECT CLUSTER')}</span>
               <select
                 value={clusterFilter}
                 onChange={(e) => handleClusterFilterChange(e.target.value)}
               >
-                <option value="all">Semua klaster</option>
+                <option value="all">{tx('Semua klaster', 'All clusters')}</option>
                 {clusters.map((id) => (
-                  <option key={id} value={id}>Klaster {id}</option>
+                  <option key={id} value={id}>{tx('Klaster', 'Cluster')} {id}</option>
                 ))}
               </select>
             </label>
@@ -477,14 +479,14 @@ export function ClusterMapPage() {
                   checked={noiseOnly}
                   onChange={(e) => handleNoiseOnlyChange(e.target.checked)}
                 />
-                <span>Hanya Noise (−1)</span>
+                <span>{tx('Hanya Noise (−1)', 'Noise Only (−1)')}</span>
               </label>
               <button
                 type="button"
                 className="icon-button"
                 onClick={resetFilters}
-                aria-label="Reset filter"
-                title="Reset filter"
+                aria-label={tx('Reset filter', 'Reset filter')}
+                title={tx('Reset filter', 'Reset filter')}
               >
                 <RefreshCw size={14} />
               </button>
@@ -493,26 +495,26 @@ export function ClusterMapPage() {
 
           {/* Parameter Cards */}
           <div className="glass-card map-side-card">
-            <span className="eyebrow">PARAMETER HASIL AKTIF</span>
+            <span className="eyebrow">{tx('PARAMETER HASIL AKTIF', 'ACTIVE RUN PARAMETERS')}</span>
             <div className="run-id">#{metadata.run.id}</div>
             <div className="run-meta">
               <span>EPSILON</span><strong>{formatNumber(metadata.run.eps_km, 2)} km</strong>
-              <span>JUMLAH MINIMUM TITIK (MinPts)</span><strong>{metadata.run.min_samples}</strong>
-              <span>METRIK JARAK</span><strong>{metadata.run.metric}</strong>
+              <span>{tx('JUMLAH MINIMUM TITIK (MinPts)', 'MINIMUM POINTS (MinPts)')}</span><strong>{metadata.run.min_samples}</strong>
+              <span>{tx('METRIK JARAK', 'DISTANCE METRIC')}</span><strong>{metadata.run.metric}</strong>
             </div>
-            <p className="map-parameter-note">Parameter diambil dari hasil DBSCAN yang sedang dipublikasikan.</p>
+            <p className="map-parameter-note">{tx('Parameter diambil dari hasil DBSCAN yang sedang dipublikasikan.', 'Parameters reflect the currently published DBSCAN run.')}</p>
           </div>
 
           <div className="glass-card map-side-card">
-            <span className="eyebrow">PANDUAN PETA</span>
-            <h3>Posisi dan kelompok</h3>
-            <p>Satu marker mewakili satu kejadian gempa. Warna membantu membedakan ID klaster; jendela informasi menampilkan atribut kejadian dari dataset.</p>
-            <div className="map-layer-stat"><LocateFixed size={17} /><span>Koordinat: latitude / longitude</span></div>
-            <div className="map-layer-stat"><Filter size={17} /><span>Saring berdasarkan klaster atau Noise</span></div>
+            <span className="eyebrow">{tx('PANDUAN PETA', 'MAP GUIDE')}</span>
+            <h3>{tx('Posisi dan kelompok', 'Location and grouping')}</h3>
+            <p>{tx('Satu marker mewakili satu kejadian gempa. Warna membantu membedakan ID klaster; jendela informasi menampilkan atribut kejadian dari dataset.', 'Each marker represents one earthquake event. Colors distinguish cluster IDs; popups display event attributes from the dataset.')}</p>
+            <div className="map-layer-stat"><LocateFixed size={17} /><span>{tx('Koordinat: latitude / longitude', 'Coordinates: latitude / longitude')}</span></div>
+            <div className="map-layer-stat"><Filter size={17} /><span>{tx('Saring berdasarkan klaster atau Noise', 'Filter by cluster or Noise')}</span></div>
           </div>
         </aside>
       </div>
-      <div className="map-bottom-note"><Info size={16} /><p><strong>Perlu diingat:</strong> klaster menggambarkan kedekatan/kepadatan spasial menurut parameter yang digunakan. Peta ini bukan peta intensitas guncangan, peta potensi tsunami, atau peta tingkat risiko bencana.</p></div>
+      <div className="map-bottom-note"><Info size={16} /><p><strong>{tx('Perlu diingat:', 'Note:')}</strong> {tx('klaster menggambarkan kedekatan/kepadatan spasial menurut parameter yang digunakan. Peta ini bukan peta intensitas guncangan, peta potensi tsunami, atau peta tingkat risiko bencana.', 'Clusters indicate spatial density under selected parameters. This map does not represent shaking intensity, tsunami risk, or hazard alerts.')}</p></div>
     </>}
   </div>;
 }

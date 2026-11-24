@@ -12,6 +12,8 @@ import type { ElbowCurveSummary, ElbowDetailRecord, ElbowSummary } from '../api/
 import type { ParameterExperiment, ParameterSearchMetadata } from '../types/domain';
 import { resolveExperimentProvenance } from '../utils/parameterSearchMetadata';
 import { IS_PREVIEW_MODE } from '../config/env';
+import { useI18n } from '../i18n/LanguageContext';
+import type { Language } from '../i18n/types';
 import { invalidateCachePrefix } from '../utils/resourceCache';
 import { GlassCard, StatePanel, StatusBadge, formatNumber } from './ui';
 import { ApiError } from '../types/api';
@@ -114,12 +116,12 @@ function buildComparisonRows(curves: ElbowCurveSummary[], details: Record<number
   return [...rows.values()].sort((a, b) => a.rank - b.rank);
 }
 
-function ElbowTooltip({ active, payload, label }: { active?: boolean; payload?: ChartPayloadItem[]; label?: number | string }) {
+function ElbowTooltip({ active, payload, label, lang }: { active?: boolean; payload?: ChartPayloadItem[]; label?: number | string; lang: Language }) {
   if (!active || !payload?.length) return null;
   const visible = payload.filter((item) => typeof item.value === 'number');
   if (!visible.length) return null;
   return <div className="chart-tooltip elbow-chart-tooltip">
-    <div className="chart-tooltip-heading"><span>JARAK TETANGGA</span><strong>Urutan titik {formatNumber(Number(label))}</strong></div>
+    <div className="chart-tooltip-heading"><span>{lang === 'en' ? 'NEIGHBOR DISTANCE' : 'JARAK TETANGGA'}</span><strong>{lang === 'en' ? 'Point rank' : 'Urutan titik'} {formatNumber(Number(label))}</strong></div>
     <div className="chart-tooltip-rows">
       {visible.map((item) => <div className="chart-tooltip-row" key={String(item.dataKey)}>
         <span className="chart-tooltip-label"><i style={{ backgroundColor: item.color || '#48D7ED' }} />{item.name || String(item.dataKey)}</span>
@@ -144,9 +146,9 @@ function downloadName(jobId: number, minSamples: number, extension: string): str
   return `seismap-job-${jobId}-minpts-${minSamples}-k-distance.${extension}`;
 }
 
-function CurveStatus({ curve }: { curve: ElbowCurveSummary }) {
+function CurveStatus({ curve, lang }: { curve: ElbowCurveSummary; lang: Language }) {
   return curve.knee_detected
-    ? <span className="elbow-knee-status is-detected"><CheckCircle2 size={13} /> Titik Knee terdeteksi</span>
+    ? <span className="elbow-knee-status is-detected"><CheckCircle2 size={13} /> {lang === 'en' ? 'Knee point detected' : 'Titik Knee terdeteksi'}</span>
     : <span className="elbow-knee-status is-missing"><AlertCircle size={13} /> Knee Point Not Detected</span>;
 }
 
@@ -165,6 +167,7 @@ export function ElbowAnalysisPanel({
   experiments: ParameterExperiment[] | null;
   jobMetadata?: ParameterSearchMetadata | null;
 }) {
+  const { lang, tx } = useI18n();
   const [summary, setSummary] = useState<ElbowSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -298,42 +301,42 @@ export function ElbowAnalysisPanel({
 
   return <section className="elbow-section" id="elbow-analysis">
     <GlassCard
-      title="Analisis Kurva k-Distance"
-      subtitle="Bandingkan kurva k-distance tiap MinPts untuk melihat titik siku (knee) dan kandidat epsilon."
-      action={jobId && jobStatus === 'SUCCESS' && !IS_PREVIEW_MODE ? <button className="button button-secondary elbow-refresh" type="button" onClick={retrySummary} disabled={summaryLoading}><RefreshCw size={13} /> Muat ulang</button> : undefined}
+      title={tx('Analisis Kurva k-Distance', 'k-Distance Curve Analysis')}
+      subtitle={tx('Bandingkan kurva k-distance tiap MinPts untuk melihat titik siku (knee) dan kandidat epsilon.', 'Compare k-distance curves per MinPts to examine knee points and candidate epsilon values.')}
+      action={jobId && jobStatus === 'SUCCESS' && !IS_PREVIEW_MODE ? <button className="button button-secondary elbow-refresh" type="button" onClick={retrySummary} disabled={summaryLoading}><RefreshCw size={13} /> {tx('Muat ulang', 'Reload')}</button> : undefined}
     >
-      {IS_PREVIEW_MODE ? <StatePanel type="info" title="Analisis tersedia pada backend aktif" message="Mode Pratinjau tidak memuat artefak ilmiah simulasi. Hubungkan aplikasi ke backend untuk melihat hasil K-Distance yang sebenarnya." />
-        : !jobId ? <StatePanel type="info" title="Belum ada proses Pencarian Parameter" message="Jalankan Pencarian Parameter atau buka proses yang sudah berhasil melalui Manajemen Proses. Analisis Elbow akan muncul pada proses yang dipilih." />
-          : jobStatus === 'FAILED' || jobStatus === 'CANCELLED' ? <StatePanel type="error" title="Pencarian Parameter tidak berhasil diselesaikan" message="Analisis K-Distance tidak dapat dibuka karena proses sumber gagal atau dibatalkan. Periksa rincian proses pada Manajemen Proses." />
-          : jobStatus !== 'SUCCESS' ? <StatePanel type="info" title="Menunggu Pencarian Parameter selesai" message="Kurva K-Distance dan titik Knee dapat ditinjau setelah backend menyelesaikan proses Pencarian Parameter." />
-            : summaryLoading ? <StatePanel type="loading" title="Memuat analisis K-Distance" message="Mengambil ringkasan kurva dan metadata dari backend." />
-              : summaryError ? <StatePanel type="info" title="Artefak analisis belum tersedia" message={summaryError} action={<button className="button button-secondary" type="button" onClick={retrySummary}>Coba lagi</button>} />
-                : !summary ? <StatePanel type="empty" title="Analisis belum tersedia" message="Ringkasan kurva belum dapat ditampilkan." />
-                  : !summary.ready ? <StatePanel type="info" title="Artefak belum siap ditampilkan" message="Backend belum menandai artefak K-Distance sebagai siap. Muat ulang setelah proses penyimpanan selesai." />
-                    : !summary.curves.length ? <StatePanel type="empty" title="Kurva belum tersedia" message="Tidak ada kurva MinPts yang dikembalikan oleh backend untuk proses ini." />
+      {IS_PREVIEW_MODE ? <StatePanel type="info" title={tx('Analisis tersedia pada backend aktif', 'Analysis available on live API')} message={tx('Mode Pratinjau tidak memuat artefak ilmiah simulasi. Hubungkan aplikasi ke backend untuk melihat hasil K-Distance yang sebenarnya.', 'Preview Mode does not load simulated curve artifacts. Connect to a live backend to inspect actual k-Distance results.')} />
+        : !jobId ? <StatePanel type="info" title={tx('Belum ada proses Pencarian Parameter', 'No Parameter Search job selected')} message={tx('Jalankan Pencarian Parameter atau buka proses yang sudah berhasil melalui Manajemen Proses. Analisis Elbow akan muncul pada proses yang dipilih.', 'Run a Parameter Search or open a completed job from Job Management. Elbow analysis will appear for the selected job.')} />
+          : jobStatus === 'FAILED' || jobStatus === 'CANCELLED' ? <StatePanel type="error" title={tx('Pencarian Parameter tidak berhasil diselesaikan', 'Parameter Search did not complete')} message={tx('Analisis K-Distance tidak dapat dibuka karena proses sumber gagal atau dibatalkan. Periksa rincian proses pada Manajemen Proses.', 'k-Distance analysis cannot be opened because the source job failed or was cancelled. Check details in Job Management.')} />
+          : jobStatus !== 'SUCCESS' ? <StatePanel type="info" title={tx('Menunggu Pencarian Parameter selesai', 'Waiting for Parameter Search to finish')} message={tx('Kurva K-Distance dan titik Knee dapat ditinjau setelah backend menyelesaikan proses Pencarian Parameter.', 'k-Distance curves and knee points can be reviewed once Parameter Search finishes.')} />
+            : summaryLoading ? <StatePanel type="loading" title={tx('Memuat analisis K-Distance', 'Loading k-Distance analysis')} message={tx('Mengambil ringkasan kurva dan metadata dari server.', 'Fetching curve summaries and metadata from the server.')} />
+              : summaryError ? <StatePanel type="info" title={tx('Artefak analisis belum tersedia', 'Analysis artifacts unavailable')} message={summaryError} action={<button className="button button-secondary" type="button" onClick={retrySummary}>{tx('Coba lagi', 'Try again')}</button>} />
+                : !summary ? <StatePanel type="empty" title={tx('Analisis belum tersedia', 'Analysis unavailable')} message={tx('Ringkasan kurva belum dapat ditampilkan.', 'Curve summary could not be displayed.')} />
+                  : !summary.ready ? <StatePanel type="info" title={tx('Artefak belum siap ditampilkan', 'Artifacts not ready yet')} message={tx('Backend belum menandai artefak K-Distance sebagai siap. Muat ulang setelah proses penyimpanan selesai.', 'Artifacts are not marked ready yet. Reload after artifact persistence finishes.')} />
+                    : !summary.curves.length ? <StatePanel type="empty" title={tx('Kurva belum tersedia', 'No curves available')} message={tx('Tidak ada kurva MinPts yang dikembalikan untuk proses ini.', 'No MinPts curves were returned for this job.')} />
                       : <div className="elbow-content">
                         <div className="elbow-context-strip">
-                          <div><span>PROSES</span><strong>#{summary.job_id}</strong></div>
+                          <div><span>{tx('PROSES', 'JOB')}</span><strong>#{summary.job_id}</strong></div>
                           <div><span>DATASET</span><strong>{datasetName || `Dataset #${datasetId ?? summary.dataset_id}`}</strong></div>
-                          <div><span>METRIK JARAK</span><strong>{summary.metric.toUpperCase()}</strong></div>
-                          <div><span>UNIT JARAK</span><strong>{summary.distance_unit}</strong></div>
+                          <div><span>{tx('METRIK JARAK', 'DISTANCE METRIC')}</span><strong>{summary.metric.toUpperCase()}</strong></div>
+                          <div><span>{tx('UNIT JARAK', 'DISTANCE UNIT')}</span><strong>{summary.distance_unit}</strong></div>
                         </div>
 
-                        <div className="elbow-view-switch" role="tablist" aria-label="Tampilan analisis Elbow">
-                          <button type="button" role="tab" aria-selected={view === 'comparison'} className={view === 'comparison' ? 'is-active' : ''} onClick={() => setView('comparison')}><Layers3 size={14} /> Perbandingan</button>
-                          <button type="button" role="tab" aria-selected={view === 'detail'} className={view === 'detail' ? 'is-active' : ''} onClick={() => setView('detail')}><BarChart3 size={14} /> Detail Kurva</button>
+                        <div className="elbow-view-switch" role="tablist" aria-label={tx('Tampilan analisis Elbow', 'Elbow analysis view')}>
+                          <button type="button" role="tab" aria-selected={view === 'comparison'} className={view === 'comparison' ? 'is-active' : ''} onClick={() => setView('comparison')}><Layers3 size={14} /> {tx('Perbandingan', 'Comparison')}</button>
+                          <button type="button" role="tab" aria-selected={view === 'detail'} className={view === 'detail' ? 'is-active' : ''} onClick={() => setView('detail')}><BarChart3 size={14} /> {tx('Detail Kurva', 'Curve Details')}</button>
                         </div>
 
                         {view === 'comparison' ? <div className="elbow-view-content">
-                          <div className="elbow-section-heading"><div><h4>Perbandingan kurva MinPts</h4><p>Setiap garis menampilkan preview kurva yang dikirim backend. Pilih salah satu MinPts untuk membuka rincian.</p></div><span className="elbow-count">{formatNumber(summary.curves.length)} kurva</span></div>
-                          {detailsLoading && !comparisonRows.length ? <StatePanel type="loading" title="Menyiapkan kurva perbandingan" message="Mengambil preview setiap kandidat MinPts secara bertahap." />
+                          <div className="elbow-section-heading"><div><h4>{tx('Perbandingan kurva MinPts', 'MinPts curve comparison')}</h4><p>{tx('Setiap garis menampilkan preview kurva dari server. Pilih salah satu MinPts untuk membuka rincian.', 'Each line represents a preview k-distance curve. Select a MinPts candidate to inspect details.')}</p></div><span className="elbow-count">{formatNumber(summary.curves.length)} {tx('kurva', 'curves')}</span></div>
+                          {detailsLoading && !comparisonRows.length ? <StatePanel type="loading" title={tx('Menyiapkan kurva perbandingan', 'Preparing comparison curves')} message={tx('Mengambil preview setiap kandidat MinPts secara bertahap.', 'Loading curve previews incrementally per MinPts candidate.')} />
                             : comparisonRows.length ? <div className="elbow-chart-frame">
                               <div className="elbow-chart-wrap"><ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={comparisonRows} margin={{ top: 16, right: 18, left: 2, bottom: 26 }}>
                                   <CartesianGrid stroke="rgba(189,213,238,.09)" vertical={false} />
-                                  <XAxis dataKey="rank" type="number" domain={['dataMin', 'dataMax']} tick={{ fill: '#A9BBD0', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(value)} label={{ value: 'Urutan titik (rank)', position: 'insideBottom', offset: -16, fill: '#8198AD', fontSize: 10 }} />
-                                  <YAxis tick={{ fill: '#A9BBD0', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(value, 1)} width={54} label={{ value: 'Jarak (km)', angle: -90, position: 'insideLeft', fill: '#8198AD', fontSize: 10 }} />
-                                  <Tooltip content={<ElbowTooltip />} cursor={{ stroke: 'rgba(72,215,237,.22)', strokeDasharray: '4 4' }} />
+                                  <XAxis dataKey="rank" type="number" domain={['dataMin', 'dataMax']} tick={{ fill: '#A9BBD0', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(value)} label={{ value: tx('Urutan titik (rank)', 'Point rank'), position: 'insideBottom', offset: -16, fill: '#8198AD', fontSize: 10 }} />
+                                  <YAxis tick={{ fill: '#A9BBD0', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(value, 1)} width={54} label={{ value: tx('Jarak (km)', 'Distance (km)'), angle: -90, position: 'insideLeft', fill: '#8198AD', fontSize: 10 }} />
+                                  <Tooltip content={<ElbowTooltip lang={lang} />} cursor={{ stroke: 'rgba(72,215,237,.22)', strokeDasharray: '4 4' }} />
                                   <Legend verticalAlign="top" align="center" height={32} wrapperStyle={{ fontSize: 10, color: '#A9BBD0' }} />
                                   {summary.curves.map((curve, index) => <Line key={curve.min_samples} type="monotone" dataKey={curveKey(curve.min_samples)} name={`MinPts ${curve.min_samples}`} stroke={CURVE_COLORS[index % CURVE_COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: '#EAF8FF', strokeWidth: 1 }} connectNulls={false} />)}
                                   {summary.curves.map((curve, index) => {
@@ -343,17 +346,17 @@ export function ElbowAnalysisPanel({
                                   })}
                                 </LineChart>
                               </ResponsiveContainer></div>
-                              <div className="elbow-legend-list">{summary.curves.map((curve, index) => <button key={curve.min_samples} type="button" className="elbow-legend-item" onClick={() => { setSelectedMinSamples(curve.min_samples); setView('detail'); }}><i style={{ background: CURVE_COLORS[index % CURVE_COLORS.length] }} /><span>MinPts {curve.min_samples}</span><strong>{curve.knee_detected && curve.epsilon_km !== null ? `${formatNumber(curve.epsilon_km, 2)} km` : 'Knee tidak terdeteksi'}</strong></button>)}</div>
-                            </div> : <StatePanel type="empty" title="Preview kurva belum tersedia" message="Backend belum mengembalikan titik preview untuk kurva yang dipilih." />}
+                              <div className="elbow-legend-list">{summary.curves.map((curve, index) => <button key={curve.min_samples} type="button" className="elbow-legend-item" onClick={() => { setSelectedMinSamples(curve.min_samples); setView('detail'); }}><i style={{ background: CURVE_COLORS[index % CURVE_COLORS.length] }} /><span>MinPts {curve.min_samples}</span><strong>{curve.knee_detected && curve.epsilon_km !== null ? `${formatNumber(curve.epsilon_km, 2)} km` : tx('Knee tidak terdeteksi', 'Knee not detected')}</strong></button>)}</div>
+                            </div> : <StatePanel type="empty" title={tx('Preview kurva belum tersedia', 'Curve preview unavailable')} message={tx('Server belum mengembalikan titik preview untuk kurva yang dipilih.', 'Preview points are not available for the selected curve.')} />}
 
                           <div className="elbow-curve-grid">{summary.curves.map((curve, index) => <button key={curve.min_samples} type="button" className={`elbow-curve-card ${selectedMinSamples === curve.min_samples ? 'is-selected' : ''}`} onClick={() => { setSelectedMinSamples(curve.min_samples); setView('detail'); }}>
-                            <div className="elbow-curve-card-top"><span className="elbow-curve-dot" style={{ background: CURVE_COLORS[index % CURVE_COLORS.length] }} /><strong>MinPts {curve.min_samples}</strong><span className="elbow-point-count">{formatNumber(curve.point_count)} titik</span></div>
-                            <CurveStatus curve={curve} />
-                            <div className="elbow-curve-epsilon"><span>Rekomendasi epsilon</span><strong>{curve.knee_detected && curve.epsilon_km !== null ? `${formatNumber(curve.epsilon_km, 3)} km` : '—'}</strong></div>
+                            <div className="elbow-curve-card-top"><span className="elbow-curve-dot" style={{ background: CURVE_COLORS[index % CURVE_COLORS.length] }} /><strong>MinPts {curve.min_samples}</strong><span className="elbow-point-count">{formatNumber(curve.point_count)} {tx('titik', 'points')}</span></div>
+                            <CurveStatus curve={curve} lang={lang} />
+                            <div className="elbow-curve-epsilon"><span>{tx('Rekomendasi epsilon', 'Epsilon candidate')}</span><strong>{curve.knee_detected && curve.epsilon_km !== null ? `${formatNumber(curve.epsilon_km, 3)} km` : '—'}</strong></div>
                           </button>)}</div>
-                          <div className="elbow-download-row"><button className="button button-secondary" type="button" disabled={!summary.comparison_plot_url || downloadBusy === 'comparison'} onClick={() => void handleDownload(summary.comparison_plot_url, `seismap-job-${summary.job_id}-elbow-comparison.png`, 'comparison')}><ImageIcon size={14} />{downloadBusy === 'comparison' ? 'Mengunduh…' : 'Unduh grafik perbandingan (PNG)'}</button></div>
+                          <div className="elbow-download-row"><button className="button button-secondary" type="button" disabled={!summary.comparison_plot_url || downloadBusy === 'comparison'} onClick={() => void handleDownload(summary.comparison_plot_url, `seismap-job-${summary.job_id}-elbow-comparison.png`, 'comparison')}><ImageIcon size={14} />{downloadBusy === 'comparison' ? tx('Mengunduh…', 'Downloading…') : tx('Unduh grafik perbandingan (PNG)', 'Download comparison plot (PNG)')}</button></div>
                         </div> : <div className="elbow-view-content">
-                          <div className="elbow-detail-toolbar"><div className="elbow-minpts-picker"><label htmlFor="elbow-minpts-select">Pilih kandidat MinPts</label><select id="elbow-minpts-select" value={selectedMinSamples ?? ''} onChange={(event) => setSelectedMinSamples(Number(event.target.value))}>{summary.curves.map((curve) => <option key={curve.min_samples} value={curve.min_samples}>MinPts {curve.min_samples}</option>)}</select></div>
+                          <div className="elbow-detail-toolbar"><div className="elbow-minpts-picker"><label htmlFor="elbow-minpts-select">{tx('Pilih kandidat MinPts', 'Select MinPts candidate')}</label><select id="elbow-minpts-select" value={selectedMinSamples ?? ''} onChange={(event) => setSelectedMinSamples(Number(event.target.value))}>{summary.curves.map((curve) => <option key={curve.min_samples} value={curve.min_samples}>MinPts {curve.min_samples}</option>)}</select></div>
                             {selectedCurve && <div className="elbow-download-actions">
                               <button className="button button-secondary" type="button" disabled={!selectedCurve.plot_url || downloadBusy === 'plot'} onClick={() => void handleDownload(selectedCurve.plot_url, downloadName(summary.job_id, selectedCurve.min_samples, 'png'), 'plot')}><ImageIcon size={13} /> PNG</button>
                               <button className="button button-secondary" type="button" disabled={!selectedCurve.data_url || downloadBusy === 'data'} onClick={() => void handleDownload(selectedCurve.data_url, downloadName(summary.job_id, selectedCurve.min_samples, 'csv'), 'data')}><FileSpreadsheet size={13} /> CSV</button>
@@ -364,37 +367,37 @@ export function ElbowAnalysisPanel({
                           {selectedCurve && <>
                             <div className="elbow-detail-summary">
                               <div><span>MinPts</span><strong>{selectedCurve.min_samples}</strong></div>
-                              <div><span>Jumlah titik</span><strong>{formatNumber(selectedCurve.point_count)}</strong></div>
-                              <div><span>Epsilon dari Knee</span><strong>{selectedCurve.knee_detected && selectedCurve.epsilon_km !== null ? `${formatNumber(selectedCurve.epsilon_km, 3)} km` : '—'}</strong></div>
-                              <div><span>Status Knee</span><strong className={selectedCurve.knee_detected ? 'text-success' : 'text-warning'}>{selectedCurve.knee_detected ? 'Terdeteksi' : 'Tidak terdeteksi'}</strong></div>
+                              <div><span>{tx('Jumlah titik', 'Point count')}</span><strong>{formatNumber(selectedCurve.point_count)}</strong></div>
+                              <div><span>{tx('Epsilon dari Knee', 'Knee Epsilon')}</span><strong>{selectedCurve.knee_detected && selectedCurve.epsilon_km !== null ? `${formatNumber(selectedCurve.epsilon_km, 3)} km` : '—'}</strong></div>
+                              <div><span>{tx('Status Knee', 'Knee Status')}</span><strong className={selectedCurve.knee_detected ? 'text-success' : 'text-warning'}>{selectedCurve.knee_detected ? tx('Terdeteksi', 'Detected') : tx('Tidak terdeteksi', 'Not detected')}</strong></div>
                             </div>
-                            <CurveStatus curve={selectedCurve} />
-                            {detailsLoading && !details[selectedCurve.min_samples]?.record && !details[selectedCurve.min_samples]?.error ? <StatePanel type="loading" title="Memuat rincian kurva" message="Mengambil titik preview dan metadata dari backend." />
-                              : details[selectedCurve.min_samples]?.error ? <StatePanel type="error" title="Rincian kurva gagal dimuat" message={details[selectedCurve.min_samples].error || 'Rincian kurva tidak tersedia.'} />
+                            <CurveStatus curve={selectedCurve} lang={lang} />
+                            {detailsLoading && !details[selectedCurve.min_samples]?.record && !details[selectedCurve.min_samples]?.error ? <StatePanel type="loading" title={tx('Memuat rincian kurva', 'Loading curve details')} message={tx('Mengambil titik preview dan metadata dari server.', 'Fetching preview points and metadata from the server.')} />
+                              : details[selectedCurve.min_samples]?.error ? <StatePanel type="error" title={tx('Rincian kurva gagal dimuat', 'Failed to load curve details')} message={details[selectedCurve.min_samples].error || tx('Rincian kurva tidak tersedia.', 'Curve details unavailable.')} />
                                 : selectedPoints.length ? <>
-                                  <div className="elbow-section-heading"><div><h4>Kurva K-Distance — MinPts {selectedCurve.min_samples}</h4><p>Grafik menggunakan titik preview dari backend. Garis epsilon dan penanda Knee hanya ditampilkan jika tersedia pada hasil backend.</p></div></div>
+                                  <div className="elbow-section-heading"><div><h4>{tx('Kurva K-Distance', 'k-Distance Curve')} — MinPts {selectedCurve.min_samples}</h4><p>{tx('Grafik menggunakan titik preview dari server. Garis epsilon dan penanda Knee hanya ditampilkan jika tersedia pada hasil.', 'Chart uses server preview points. Epsilon threshold and Knee markers appear only when detected.')}</p></div></div>
                                   <div className="elbow-chart-frame"><div className="elbow-chart-wrap elbow-chart-detail"><ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={selectedPoints} margin={{ top: 16, right: 20, left: 4, bottom: 26 }}>
                                       <CartesianGrid stroke="rgba(189,213,238,.09)" vertical={false} />
-                                      <XAxis dataKey="rank" type="number" domain={['dataMin', 'dataMax']} tick={{ fill: '#A9BBD0', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(value)} label={{ value: 'Urutan titik (rank)', position: 'insideBottom', offset: -16, fill: '#8198AD', fontSize: 10 }} />
-                                      <YAxis tick={{ fill: '#A9BBD0', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(value, 1)} width={56} label={{ value: 'Jarak (km)', angle: -90, position: 'insideLeft', fill: '#8198AD', fontSize: 10 }} />
-                                      <Tooltip content={<ElbowTooltip />} cursor={{ stroke: 'rgba(72,215,237,.22)', strokeDasharray: '4 4' }} />
+                                      <XAxis dataKey="rank" type="number" domain={['dataMin', 'dataMax']} tick={{ fill: '#A9BBD0', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(value)} label={{ value: tx('Urutan titik (rank)', 'Point rank'), position: 'insideBottom', offset: -16, fill: '#8198AD', fontSize: 10 }} />
+                                      <YAxis tick={{ fill: '#A9BBD0', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(value, 1)} width={56} label={{ value: tx('Jarak (km)', 'Distance (km)'), angle: -90, position: 'insideLeft', fill: '#8198AD', fontSize: 10 }} />
+                                      <Tooltip content={<ElbowTooltip lang={lang} />} cursor={{ stroke: 'rgba(72,215,237,.22)', strokeDasharray: '4 4' }} />
                                       <Line type="monotone" dataKey="distance_km" name={`MinPts ${selectedCurve.min_samples}`} stroke="#48D7ED" strokeWidth={2.2} dot={false} activeDot={{ r: 4, stroke: '#EAF8FF', strokeWidth: 1 }} />
                                       {selectedCurve.knee_detected && selectedCurve.epsilon_km !== null && <ReferenceLine y={selectedCurve.epsilon_km} stroke="#F3B85F" strokeDasharray="6 5" label={{ value: `Epsilon ${formatNumber(selectedCurve.epsilon_km, 2)} km`, fill: '#F3C77F', fontSize: 10, position: 'insideTopRight' }} />}
                                       {selectedCurve.knee_detected && selectedCurve.epsilon_km !== null && selectedKneeRank !== null && <ReferenceDot x={selectedKneeRank} y={selectedCurve.epsilon_km} r={6} fill="#F3B85F" stroke="#FFF7E8" strokeWidth={2} />}
                                     </LineChart>
                                   </ResponsiveContainer></div></div>
-                                  <div className="elbow-knee-explanation">{selectedCurve.knee_detected ? <><Target size={15} /><span>Titik Knee terdeteksi oleh backend. Nilai epsilon di atas merupakan kandidat awal untuk dibandingkan dengan hasil eksperimen DBSCAN, bukan keputusan parameter final.</span></> : <><Info size={15} /><span>Knee Point Not Detected. Sistem tidak membuat titik atau nilai epsilon pengganti. Gunakan kandidat epsilon eksplisit yang tercatat pada konfigurasi pencarian jika tersedia.</span></>}</div>
-                                  {selectedConfig.length > 0 && <div className="elbow-config-card"><strong>Konfigurasi pembentukan kandidat</strong><div>{selectedConfig.map((item) => <div key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div></div>}
-                                </> : <StatePanel type="empty" title="Titik preview tidak tersedia" message="Backend belum mengembalikan titik kurva yang dapat divisualisasikan. Unduh PNG untuk memeriksa grafik tersimpan jika artefaknya tersedia." />}
+                                  <div className="elbow-knee-explanation">{selectedCurve.knee_detected ? <><Target size={15} /><span>{tx('Titik Knee terdeteksi pada kurva ini. Nilai epsilon tersebut menjadi kandidat awal untuk dibandingkan dengan hasil eksperimen DBSCAN.', 'A Knee point was detected on this curve. The epsilon value serves as a candidate alongside evaluated DBSCAN experiments.')}</span></> : <><Info size={15} /><span>{tx('Knee Point Not Detected. Sistem tidak membuat titik pengganti; gunakan kandidat epsilon eksplisit yang tercatat pada konfigurasi pencarian.', 'Knee Point Not Detected. No synthetic fallback point is generated; rely on explicit epsilon candidates from search config.')}</span></>}</div>
+                                  {selectedConfig.length > 0 && <div className="elbow-config-card"><strong>{tx('Konfigurasi pembentukan kandidat', 'Candidate generation config')}</strong><div>{selectedConfig.map((item) => <div key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div></div>}
+                                </> : <StatePanel type="empty" title={tx('Titik preview tidak tersedia', 'Preview points unavailable')} message={tx('Server belum mengembalikan titik kurva untuk divisualisasikan. Unduh PNG jika tersedia.', 'Preview points are unavailable for plotting. Download the PNG plot if available.')} />}
                           </>}
-                          {matchingExperiments.length > 0 && <div className="elbow-experiment-compare"><div className="elbow-section-heading"><div><h4>Eksperimen DBSCAN pada MinPts {selectedCurve?.min_samples}</h4><p>Bandingkan epsilon hasil Knee dengan epsilon yang benar-benar diuji pada eksperimen ini.</p></div><span className="elbow-count">{matchingExperiments.length} eksperimen</span></div>
-                            <div className="table-scroll"><table className="data-table elbow-experiment-table"><thead><tr><th>ID Eksperimen</th><th>Epsilon diuji</th><th>Sumber epsilon</th><th>Pembulatan</th><th>Versi metode</th><th>Validitas</th><th>Klaster</th><th>Noise</th><th>Silhouette</th></tr></thead><tbody>{matchingExperiments.map((experiment) => { const provenance = resolveExperimentProvenance(experiment, jobMetadata); return <tr key={experiment.id}><td>#{experiment.id}</td><td>{formatNumber(experiment.eps_km, 3)} km</td><td>{provenance.epsSources?.length ? provenance.epsSources.join(', ') : '—'}</td><td>{provenance.roundingKm !== null ? `${formatNumber(provenance.roundingKm, 1)} km` : '—'}</td><td>{provenance.methodVersion ?? '—'}</td><td><StatusBadge status={experiment.is_valid ? 'VALID' : 'INVALID'} /></td><td>{formatNumber(experiment.cluster_count)}</td><td>{formatNumber(experiment.noise_percentage, 2)}%</td><td>{formatNumber(experiment.silhouette_score, 3)}</td></tr>; })}</tbody></table></div>
+                          {matchingExperiments.length > 0 && <div className="elbow-experiment-compare"><div className="elbow-section-heading"><div><h4>{tx('Eksperimen DBSCAN pada MinPts', 'DBSCAN Experiments at MinPts')} {selectedCurve?.min_samples}</h4><p>{tx('Bandingkan epsilon hasil Knee dengan epsilon yang benar-benar diuji pada eksperimen ini.', 'Compare Knee epsilon against the actual epsilon values tested in DBSCAN experiments.')}</p></div><span className="elbow-count">{matchingExperiments.length} {tx('eksperimen', 'experiments')}</span></div>
+                            <div className="table-scroll"><table className="data-table elbow-experiment-table"><thead><tr><th>{tx('ID Eksperimen', 'Experiment ID')}</th><th>{tx('Epsilon diuji', 'Tested Epsilon')}</th><th>{tx('Sumber epsilon', 'Epsilon Source')}</th><th>{tx('Pembulatan', 'Rounding')}</th><th>{tx('Versi metode', 'Method Ver.')}</th><th>{tx('Validitas', 'Validity')}</th><th>{tx('Klaster', 'Clusters')}</th><th>Noise</th><th>Silhouette</th></tr></thead><tbody>{matchingExperiments.map((experiment) => { const provenance = resolveExperimentProvenance(experiment, jobMetadata); return <tr key={experiment.id}><td>#{experiment.id}</td><td>{formatNumber(experiment.eps_km, 3)} km</td><td>{provenance.epsSources?.length ? provenance.epsSources.join(', ') : '—'}</td><td>{provenance.roundingKm !== null ? `${formatNumber(provenance.roundingKm, 1)} km` : '—'}</td><td>{provenance.methodVersion ?? '—'}</td><td><StatusBadge status={experiment.is_valid ? 'VALID' : 'INVALID'} /></td><td>{formatNumber(experiment.cluster_count)}</td><td>{formatNumber(experiment.noise_percentage, 2)}%</td><td>{formatNumber(experiment.silhouette_score, 3)}</td></tr>; })}</tbody></table></div>
                           </div>}
-                          {experiments && !matchingExperiments.length && <div className="elbow-no-experiment"><Info size={14} />Belum ada eksperimen DBSCAN yang menggunakan MinPts {selectedCurve?.min_samples}.</div>}
-                          {!experiments && <div className="elbow-no-experiment"><Info size={14} />Hasil eksperimen sedang dimuat atau belum tersedia.</div>}
+                          {experiments && !matchingExperiments.length && <div className="elbow-no-experiment"><Info size={14} />{tx('Belum ada eksperimen DBSCAN yang menggunakan MinPts', 'No DBSCAN experiments found using MinPts')} {selectedCurve?.min_samples}.</div>}
+                          {!experiments && <div className="elbow-no-experiment"><Info size={14} />{tx('Hasil eksperimen sedang dimuat atau belum tersedia.', 'Experiment results are loading or unavailable.')}</div>}
                         </div>}
-                        <div className="elbow-method-note"><Activity size={15} /><span>Perhitungan KNN, deteksi Knee, dan rekomendasi epsilon sepenuhnya dilakukan backend dengan koordinat latitude–longitude dan metrik Haversine. Magnitudo, kedalaman, waktu, serta lokasi tetap digunakan untuk profiling pascaklasterisasi.</span></div>
+                        <div className="elbow-method-note"><Activity size={15} /><span>{tx('Perhitungan KNN, deteksi Knee, dan rekomendasi epsilon sepenuhnya dilakukan dengan koordinat latitude–longitude dan metrik Haversine. Magnitudo, kedalaman, waktu, serta lokasi tetap digunakan untuk profiling pascaklasterisasi.', 'KNN distance calculation, Knee detection, and epsilon recommendations operate strictly on latitude–longitude with the Haversine metric. Magnitude, depth, time, and location are used for post-clustering profiling.')}</span></div>
                       </div>}
       {downloadError && view === 'comparison' && <div className="elbow-download-error"><AlertCircle size={14} />{downloadError}</div>}
     </GlassCard>

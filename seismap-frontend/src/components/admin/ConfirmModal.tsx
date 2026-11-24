@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, LoaderCircle, X } from 'lucide-react';
+import { useI18n } from '../../i18n/LanguageContext';
 
 export interface ConfirmModalProps {
   isOpen: boolean;
@@ -18,15 +19,18 @@ export function ConfirmModal({
   isOpen,
   title,
   message,
-  confirmLabel = 'Ya, Lanjutkan',
-  cancelLabel = 'Batal',
+  confirmLabel,
+  cancelLabel,
   variant = 'primary',
   loading = false,
   icon,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const { t } = useI18n();
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const resolvedConfirmLabel = confirmLabel ?? t.common.confirmDefault;
+  const resolvedCancelLabel = cancelLabel ?? t.common.cancelDefault;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -82,7 +86,7 @@ export function ConfirmModal({
             className="confirm-modal-close"
             onClick={onCancel}
             disabled={loading}
-            aria-label="Tutup modal"
+            aria-label={t.common.closeModalAria}
           >
             <X size={16} />
           </button>
@@ -99,7 +103,7 @@ export function ConfirmModal({
             onClick={onCancel}
             disabled={loading}
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
           <button
             ref={confirmBtnRef}
@@ -110,10 +114,10 @@ export function ConfirmModal({
           >
             {loading ? (
               <>
-                <LoaderCircle className="spin" size={14} /> Memproses…
+                <LoaderCircle className="spin" size={14} /> {t.common.processing}
               </>
             ) : (
-              confirmLabel
+              resolvedConfirmLabel
             )}
           </button>
         </div>

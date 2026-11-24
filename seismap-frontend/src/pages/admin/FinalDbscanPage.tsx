@@ -11,6 +11,7 @@ import { IS_PREVIEW_MODE } from '../../config/env';
 import { usePipeline } from '../../context/PipelineContext';
 import { useJobPolling } from '../../hooks/useJobPolling';
 import { useResource } from '../../hooks/useResource';
+import { useI18n } from '../../i18n/LanguageContext';
 import {
   GlassCard, PageHeader, PrimaryButton, SimulationTag, StatePanel, StatusBadge, formatDate, formatNumber,
 } from '../../components/ui';
@@ -44,6 +45,7 @@ function persistStoredId(key: string, value: number | null): void {
 }
 
 export function FinalDbscanPage() {
+  const { lang, tx } = useI18n();
   const [searchParams] = useSearchParams();
   const urlDatasetId = Number(searchParams.get('datasetId')) || null;
   const urlJobId = Number(searchParams.get('jobId')) || null;
@@ -385,23 +387,23 @@ export function FinalDbscanPage() {
 
   return <div className="page-stack">
     <PageHeader
-      eyebrow="ADMIN / KLASTERISASI FINAL"
+      eyebrow={tx('ADMIN / KLASTERISASI FINAL', 'ADMIN / FINAL CLUSTERING')}
       title="DBSCAN Final"
-      description="Jalankan klasterisasi final dari eksperimen Pencarian Parameter yang valid."
+      description={tx('Jalankan klasterisasi final dari eksperimen Pencarian Parameter yang valid.', 'Run final clustering from a valid Parameter Search experiment.')}
       action={<SimulationTag />}
     />
 
     <div className="final-workflow-banner">
       <div className="final-workflow-icon"><Workflow size={19} /></div>
       <div>
-        <strong>Alur DBSCAN Final</strong>
-        <p>Pilih dataset → pilih proses yang berhasil → pilih eksperimen valid → jalankan DBSCAN Final.</p>
+        <strong>{tx('Alur DBSCAN Final', 'Final DBSCAN Workflow')}</strong>
+        <p>{tx('Pilih dataset → pilih proses yang berhasil → pilih eksperimen valid → jalankan DBSCAN Final.', 'Select dataset → choose successful job → pick valid experiment → run Final DBSCAN.')}</p>
       </div>
-      <Link className="button button-secondary final-workflow-link" to="/admin/jobs"><ListTodo size={14} /> Lihat Semua Proses <ArrowRight size={13} /></Link>
+      <Link className="button button-secondary final-workflow-link" to="/admin/jobs"><ListTodo size={14} /> {tx('Lihat Semua Proses', 'View All Jobs')} <ArrowRight size={13} /></Link>
     </div>
 
     <div className="final-layout">
-      <GlassCard title="Konfigurasi DBSCAN Final" subtitle="Parameter Epsilon dan MinPts diambil otomatis dari eksperimen terpilih.">
+      <GlassCard title={tx('Konfigurasi DBSCAN Final', 'Final DBSCAN Configuration')} subtitle={tx('Parameter Epsilon dan MinPts diambil otomatis dari eksperimen terpilih.', 'Epsilon and MinPts parameters are loaded automatically from the selected experiment.')}>
         <form className="stack-form" onSubmit={submit}>
           <label>Dataset
             <select
@@ -409,86 +411,86 @@ export function FinalDbscanPage() {
               onChange={(event) => handleDatasetChange(Number(event.target.value) || null)}
               disabled={datasets.loading || !datasets.data?.length}
             >
-              <option value="">Pilih dataset</option>
-              {datasets.data?.map((item) => <option key={item.id} value={item.id}>{item.dataset_name} · {statusLabel(item.status)}</option>)}
+              <option value="">{tx('Pilih dataset', 'Select dataset')}</option>
+              {datasets.data?.map((item) => <option key={item.id} value={item.id}>{item.dataset_name} · {statusLabel(item.status, lang)}</option>)}
             </select>
           </label>
 
-          <label>Proses Pencarian Parameter
+          <label>{tx('Proses Pencarian Parameter', 'Parameter Search Job')}
             <select
               value={effectiveParameterJobId ?? ''}
               onChange={(event) => handleParameterJobChange(Number(event.target.value) || null)}
               disabled={jobsLoading || !effectiveDatasetId || (!availableJobs.length && !sourceJob)}
             >
-              <option value="">Pilih Proses Pencarian Parameter</option>
+              <option value="">{tx('Pilih Proses Pencarian Parameter', 'Select Parameter Search Job')}</option>
               {sourceJob &&
                 sourceJob.job_type === 'PARAMETER_SEARCH' &&
                 sourceJob.status === 'SUCCESS' &&
                 sourceJob.dataset_id === effectiveDatasetId &&
                 !availableJobs.some((item) => item.id === sourceJob.id) && (
-                  <option value={sourceJob.id}>Proses #{sourceJob.id} · Berhasil · dipilih sebelumnya</option>
+                  <option value={sourceJob.id}>{tx(`Proses #${sourceJob.id} · Berhasil · dipilih sebelumnya`, `Job #${sourceJob.id} · Success · previously selected`)}</option>
                 )}
               {availableJobs.map((item) => (
                 <option key={item.id} value={item.id}>
-                  Proses #{item.id} · {friendlyErrorMessage(item.message || 'Pencarian Parameter selesai')}
+                  {tx('Proses', 'Job')} #{item.id} · {friendlyErrorMessage(item.message || tx('Pencarian Parameter selesai', 'Parameter Search completed'), undefined, undefined, lang)}
                 </option>
               ))}
             </select>
-            <small>Daftar otomatis disaring berdasarkan dataset terpilih dan hanya menampilkan proses Pencarian Parameter yang berhasil.</small>
+            <small>{tx('Daftar otomatis disaring berdasarkan dataset terpilih dan hanya menampilkan proses Pencarian Parameter yang berhasil.', 'Filtered automatically by selected dataset, showing successful Parameter Search jobs only.')}</small>
           </label>
 
           <div className="final-source-row">
             <div>
-              <span className="eyebrow">PROSES PENCARIAN PARAMETER YANG BERHASIL</span>
-              <strong>{jobsLoading ? 'Memuat daftar proses…' : `${jobsTotal ?? availableJobs.length} proses ditemukan`}</strong>
-              <small>{sourceJob ? `Sumber aktif: Proses #${sourceJob.id} · Dataset #${sourceJob.dataset_id}` : 'Pilih proses untuk memuat eksperimen yang valid.'}</small>
+              <span className="eyebrow">{tx('PROSES PENCARIAN PARAMETER YANG BERHASIL', 'SUCCESSFUL PARAMETER SEARCH JOBS')}</span>
+              <strong>{jobsLoading ? tx('Memuat daftar proses…', 'Loading jobs…') : `${jobsTotal ?? availableJobs.length} ${tx('proses ditemukan', 'jobs found')}`}</strong>
+              <small>{sourceJob ? tx(`Sumber aktif: Proses #${sourceJob.id} · Dataset #${sourceJob.dataset_id}`, `Active source: Job #${sourceJob.id} · Dataset #${sourceJob.dataset_id}`) : tx('Pilih proses untuk memuat eksperimen yang valid.', 'Choose a job to load valid experiments.')}</small>
             </div>
             <div className="final-job-error-actions">
               <button className="button button-ghost" type="button" disabled={jobsLoading || !effectiveDatasetId} onClick={() => setJobsReloadKey((value) => value + 1)}>
-                <RefreshCw size={13} /> Muat ulang
+                <RefreshCw size={13} /> {tx('Muat ulang', 'Reload')}
               </button>
             </div>
           </div>
 
-          {jobsError && <StatePanel type="error" title="Daftar proses gagal dimuat" message={jobsError} action={<button className="button button-secondary" type="button" onClick={() => setJobsReloadKey((value) => value + 1)}><RefreshCw size={13} /> Coba lagi</button>} />}
+          {jobsError && <StatePanel type="error" title={tx('Daftar proses gagal dimuat', 'Failed to load jobs')} message={jobsError} action={<button className="button button-secondary" type="button" onClick={() => setJobsReloadKey((value) => value + 1)}><RefreshCw size={13} /> {tx('Coba lagi', 'Try again')}</button>} />}
           {!jobsLoading && !jobsError && effectiveDatasetId && availableJobs.length === 0 && (
-            <StatePanel type="info" title="Belum ada proses Pencarian Parameter yang berhasil" message={`Belum ditemukan proses Pencarian Parameter yang berhasil untuk Dataset #${effectiveDatasetId}. Jalankan pencarian parameter terlebih dahulu atau periksa Manajemen Proses.`} action={<Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> Lihat semua proses</Link>} />
+            <StatePanel type="info" title={tx('Belum ada proses Pencarian Parameter yang berhasil', 'No successful Parameter Search jobs yet')} message={tx(`Belum ditemukan proses Pencarian Parameter yang berhasil untuk Dataset #${effectiveDatasetId}. Jalankan pencarian parameter terlebih dahulu atau periksa Manajemen Proses.`, `No completed Parameter Search jobs exist for Dataset #${effectiveDatasetId}. Run parameter search first or inspect Job Management.`)} action={<Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> {tx('Lihat semua proses', 'View all jobs')}</Link>} />
           )}
           {availableJobs.length > 0 && (
             <div className="final-source-verified">
               <CheckCircle2 size={15} />
-              <span>{availableJobs.length} proses berhasil tersedia untuk dataset ini.</span>
-              <span className="subtle-copy">Halaman {jobsPage}</span>
+              <span>{availableJobs.length} {tx('proses berhasil tersedia untuk dataset ini.', 'successful jobs available for this dataset.')}</span>
+              <span className="subtle-copy">{tx('Halaman', 'Page')} {jobsPage}</span>
               <div className="final-job-error-actions">
-                <button className="button button-ghost" type="button" disabled={jobsLoading || jobsPage <= 1} onClick={() => setJobsPage((page) => Math.max(1, page - 1))}>Sebelumnya</button>
-                <button className="button button-ghost" type="button" disabled={jobsLoading || !jobsHasMore} onClick={() => setJobsPage((page) => page + 1)}>Berikutnya</button>
+                <button className="button button-ghost" type="button" disabled={jobsLoading || jobsPage <= 1} onClick={() => setJobsPage((page) => Math.max(1, page - 1))}>{tx('Sebelumnya', 'Previous')}</button>
+                <button className="button button-ghost" type="button" disabled={jobsLoading || !jobsHasMore} onClick={() => setJobsPage((page) => page + 1)}>{tx('Berikutnya', 'Next')}</button>
               </div>
             </div>
           )}
 
-          {sourceLoading ? <StatePanel type="loading" title="Memeriksa proses sumber" message="Memastikan proses merupakan Pencarian Parameter yang berhasil dan berasal dari dataset yang dipilih." />
-            : sourceError ? <StatePanel type="error" title="Proses sumber belum dapat digunakan" message={sourceError} action={<Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> Buka Manajemen Proses</Link>} />
-              : sourceJob && <div className="final-source-verified"><CheckCircle2 size={15} /><span>Proses sumber terverifikasi: Pencarian Parameter berhasil dan dataset sesuai.</span><StatusBadge status={sourceJob.status} /></div>}
+          {sourceLoading ? <StatePanel type="loading" title={tx('Memeriksa proses sumber', 'Verifying source job')} message={tx('Memastikan proses merupakan Pencarian Parameter yang berhasil dan berasal dari dataset yang dipilih.', 'Confirming job succeeded and matches the selected dataset.')} />
+            : sourceError ? <StatePanel type="error" title={tx('Proses sumber belum dapat digunakan', 'Source job unavailable')} message={sourceError} action={<Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> {tx('Buka Manajemen Proses', 'Open Job Management')}</Link>} />
+              : sourceJob && <div className="final-source-verified"><CheckCircle2 size={15} /><span>{tx('Proses sumber terverifikasi: Pencarian Parameter berhasil dan dataset sesuai.', 'Source job verified: Parameter Search succeeded and matches dataset.')}</span><StatusBadge status={sourceJob.status} /></div>}
 
-          <label>Eksperimen yang akan dijalankan
+          <label>{tx('Eksperimen yang akan dijalankan', 'Experiment to Execute')}
             <select
               value={experimentId ?? ''}
               onChange={(event) => setExperimentId(Number(event.target.value) || null)}
               disabled={sourceLoading || !displayedExperiments.length || Boolean(sourceError)}
             >
-              <option value="">Pilih eksperimen</option>
+              <option value="">{tx('Pilih eksperimen', 'Select experiment')}</option>
               {displayedExperiments.map((item) => (
                 <option key={item.id} value={item.id}>
                   #{item.id} · ε {formatNumber(item.eps_km, 2)} km · MinPts {item.min_samples}
-                  {item.is_recommended ? ' · Direkomendasikan' : ''}
-                  {item.is_valid === false ? ' · (Tidak Valid)' : ''}
+                  {item.is_recommended ? tx(' · Direkomendasikan', ' · Recommended') : ''}
+                  {item.is_valid === false ? tx(' · (Tidak Valid)', ' · (Invalid)') : ''}
                 </option>
               ))}
             </select>
             <small>
               {hasAnyValid
-                ? 'Eksperimen valid dari proses dan dataset terpilih siap dijalankan untuk klasterisasi akhir.'
-                : 'Menampilkan eksperimen yang tersedia. Eksperimen harus berstatus Valid untuk dapat dieksekusi.'}
+                ? tx('Eksperimen valid dari proses dan dataset terpilih siap dijalankan untuk klasterisasi akhir.', 'Valid experiments from the selected job and dataset are ready for final clustering.')
+                : tx('Menampilkan eksperimen yang tersedia. Eksperimen harus berstatus Valid untuk dapat dieksekusi.', 'Showing available experiments. An experiment must be Valid to execute.')}
             </small>
           </label>
 
@@ -496,98 +498,98 @@ export function FinalDbscanPage() {
             <div className="final-invalid-warning">
               <div className="final-invalid-warning-head">
                 <AlertTriangle size={16} />
-                <strong>Eksperimen #{selectedExperiment.id} Berstatus Tidak Valid</strong>
+                <strong>{tx(`Eksperimen #${selectedExperiment.id} Berstatus Tidak Valid`, `Experiment #${selectedExperiment.id} is Invalid`)}</strong>
               </div>
               <p>
-                Eksperimen ini tidak memenuhi kriteria validasi metodologi skripsi sehingga tombol eksekusi dinonaktifkan:
+                {tx('Eksperimen ini tidak memenuhi kriteria validasi metodologi sehingga tombol eksekusi dinonaktifkan:', 'This experiment does not meet methodology validation thresholds so execution is disabled:')}
               </p>
               <ul>
                 {selectedExperiment.invalid_reasons && selectedExperiment.invalid_reasons.length > 0 ? (
                   selectedExperiment.invalid_reasons.map((reason, idx) => (
-                    <li key={idx}>{formatInvalidReason(reason, sourceJob?.parameter_search_metadata?.validity_thresholds)}</li>
+                    <li key={idx}>{formatInvalidReason(reason, sourceJob?.parameter_search_metadata?.validity_thresholds, lang)}</li>
                   ))
                 ) : (
-                  <li>Parameter eksperimen berada di luar ambang batas klaster atau noise yang diperbolehkan.</li>
+                  <li>{tx('Parameter eksperimen berada di luar ambang batas klaster atau noise yang diperbolehkan.', 'Experiment parameters fall outside allowed cluster or noise thresholds.')}</li>
                 )}
               </ul>
             </div>
           )}
 
-          <div className="inline-notice"><MapPinned size={15} /> DBSCAN Final hanya menggunakan Latitude dan Longitude dengan metrik Haversine. Epsilon dan MinPts diambil dari eksperimen; kedalaman tetap digunakan untuk menyusun profil setelah klasterisasi.</div>
-          {IS_PREVIEW_MODE && <div className="inline-notice"><span className="notice-dot" />Mode Pratinjau: eksekusi Final DBSCAN dinonaktifkan.</div>}
-          {activeFinalJob && <div className="final-block-notice"><Clock3 size={15} /><span>Proses DBSCAN Final #{jobId} berstatus {currentFinalJob ? statusLabel(currentFinalJob.status) : 'belum diketahui'}. Proses belum terminal; lanjutkan atau hentikan melalui panel kemajuan sebelum membuat eksekusi baru.</span></div>}
-          {restoringFinalJob && <div className="inline-notice"><RefreshCw size={14} className="spin" /> Memulihkan status proses Final DBSCAN terakhir dari sesi browser.</div>}
-          {finalJobStatusUnknown && <div className="final-block-notice"><AlertTriangle size={15} /><span>Status proses #{jobId} belum dapat dipastikan: {friendlyErrorMessage(jobState.error ?? 'Tidak dapat memeriksa status proses saat ini.')} Periksa Manajemen Proses. Menghentikan pemantauan tidak membatalkan proses di server.</span></div>}
+          <div className="inline-notice"><MapPinned size={15} /> {tx('DBSCAN Final hanya menggunakan Latitude dan Longitude dengan metrik Haversine. Epsilon dan MinPts diambil dari eksperimen; kedalaman tetap digunakan untuk menyusun profil setelah klasterisasi.', 'Final DBSCAN uses Latitude and Longitude only with the Haversine metric. Epsilon and MinPts come from the experiment; depth is used for post-clustering profiling.')}</div>
+          {IS_PREVIEW_MODE && <div className="inline-notice"><span className="notice-dot" />{tx('Mode Pratinjau: eksekusi Final DBSCAN dinonaktifkan.', 'Preview Mode: Final DBSCAN execution is disabled.')}</div>}
+          {activeFinalJob && <div className="final-block-notice"><Clock3 size={15} /><span>{tx(`Proses DBSCAN Final #${jobId} berstatus ${currentFinalJob ? statusLabel(currentFinalJob.status, lang) : 'belum diketahui'}. Proses belum terminal; lanjutkan atau hentikan melalui panel kemajuan sebelum membuat eksekusi baru.`, `Final DBSCAN job #${jobId} is ${currentFinalJob ? statusLabel(currentFinalJob.status, lang) : 'unknown'}. Complete or stop it before starting a new run.`)}</span></div>}
+          {restoringFinalJob && <div className="inline-notice"><RefreshCw size={14} className="spin" /> {tx('Memulihkan status proses Final DBSCAN terakhir dari sesi browser.', 'Restoring latest Final DBSCAN job status from browser session.')}</div>}
+          {finalJobStatusUnknown && <div className="final-block-notice"><AlertTriangle size={15} /><span>{tx(`Status proses #${jobId} belum dapat dipastikan:`, `Status of job #${jobId} could not be confirmed:`)} {friendlyErrorMessage(jobState.error ?? tx('Tidak dapat memeriksa status proses saat ini.', 'Unable to check job status.'), undefined, undefined, lang)}</span></div>}
           {error && <div className="form-error">{error}</div>}
           <PrimaryButton type="submit" disabled={!canSubmit}>
-            {busy ? 'Mengirim permintaan…' : activeFinalJob ? 'Final DBSCAN sedang berjalan' : restoringFinalJob ? 'Memulihkan status proses…' : <><Play size={15} /> Jalankan DBSCAN Final</>}
+            {busy ? tx('Mengirim permintaan…', 'Submitting request…') : activeFinalJob ? tx('Final DBSCAN sedang berjalan', 'Final DBSCAN is running') : restoringFinalJob ? tx('Memulihkan status proses…', 'Restoring status…') : <><Play size={15} /> {tx('Jalankan DBSCAN Final', 'Run Final DBSCAN')}</>}
           </PrimaryButton>
         </form>
       </GlassCard>
 
-      <GlassCard title="Ringkasan Eksperimen" subtitle="Periksa parameter dan metrik kandidat sebelum menjalankan klasterisasi final.">
+      <GlassCard title={tx('Ringkasan Eksperimen', 'Experiment Summary')} subtitle={tx('Periksa parameter dan metrik kandidat sebelum menjalankan klasterisasi final.', 'Inspect candidate parameters and metrics before launching final clustering.')}>
         {selectedExperiment ? <div className="final-experiment-summary">
           <div className="final-experiment-heading">
             <div>
-              <span className="eyebrow">EKSPERIMEN TERPILIH</span>
-              <h3>Eksperimen #{selectedExperiment.id}</h3>
+              <span className="eyebrow">{tx('EKSPERIMEN TERPILIH', 'SELECTED EXPERIMENT')}</span>
+              <h3>{tx('Eksperimen', 'Experiment')} #{selectedExperiment.id}</h3>
             </div>
             <div className="final-experiment-badges">
               <StatusBadge status={selectedExperiment.is_valid === true ? 'VALID' : selectedExperiment.is_valid === false ? 'INVALID' : 'HISTORIS'} />
-              {selectedExperiment.is_recommended && <span className="recommended-label">Direkomendasikan</span>}
+              {selectedExperiment.is_recommended && <span className="recommended-label">{tx('Direkomendasikan', 'Recommended')}</span>}
             </div>
           </div>
           <div className="final-parameter-grid">
-            <div title="Jarak jangkauan ketetanggaan maksimum pada permukaan bumi (metrik Haversine).">
+            <div title={tx('Jarak jangkauan ketetanggaan maksimum pada permukaan bumi (metrik Haversine).', 'Maximum neighborhood radius on Earth surface (Haversine metric).')}>
               <span>Epsilon</span>
               <strong className="tabular-nums">{formatNumber(selectedExperiment.eps_km, 2)} <small>km</small></strong>
             </div>
-            <div title="Jumlah minimum titik tetangga agar sebuah titik diakui sebagai core point klaster.">
+            <div title={tx('Jumlah minimum titik tetangga agar sebuah titik diakui sebagai core point klaster.', 'Minimum neighbor points required to qualify as a core point.')}>
               <span>MinPts</span>
               <strong className="tabular-nums">{formatNumber(selectedExperiment.min_samples)}</strong>
             </div>
-            <div title="Total klaster spasial gempa bumi yang berhasil dibentuk oleh DBSCAN.">
-              <span>Jumlah Klaster</span>
+            <div title={tx('Total klaster spasial gempa bumi yang berhasil dibentuk oleh DBSCAN.', 'Total spatial clusters formed by DBSCAN.')}>
+              <span>{tx('Jumlah Klaster', 'Cluster Count')}</span>
               <strong className="tabular-nums">{formatNumber(selectedExperiment.cluster_count)}</strong>
             </div>
-            <div title="Persentase gempa yang diklasifikasikan sebagai noise (tidak tergabung ke dalam klaster manapun).">
-              <span>Persentase Noise</span>
+            <div title={tx('Persentase gempa yang diklasifikasikan sebagai noise (tidak tergabung ke dalam klaster manapun).', 'Percentage of earthquakes classified as noise.')}>
+              <span>{tx('Persentase Noise', 'Noise Percentage')}</span>
               <strong className="tabular-nums">{formatPercent(selectedExperiment.noise_percentage)}</strong>
             </div>
-            <div title="Proporsi titik pada klaster terbesar dibanding seluruh titik terklaster (mendeteksi efek chaining).">
-              <span>Dominasi Klaster</span>
+            <div title={tx('Proporsi titik pada klaster terbesar dibanding seluruh titik terklaster (mendeteksi efek chaining).', 'Ratio of largest cluster points to all clustered points.')}>
+              <span>{tx('Dominasi Klaster', 'Cluster Dominance')}</span>
               <strong className="tabular-nums">{formatRatioPercent(selectedExperiment.largest_cluster_ratio)}</strong>
               {selectedExperiment.max_cluster_size != null && (
                 <small className="table-sub tabular-nums" style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Maks {formatNumber(selectedExperiment.max_cluster_size)} titik
+                  {tx('Maks', 'Max')} {formatNumber(selectedExperiment.max_cluster_size)} {tx('titik', 'points')}
                 </small>
               )}
             </div>
-            <div title="Ukuran kepadatan dan pemisahan klaster pada titik terklaster (−1 hingga 1).">
-              <span>Skor Silhouette</span>
+            <div title={tx('Ukuran kepadatan dan pemisahan klaster pada titik terklaster (−1 hingga 1).', 'Cluster cohesion and separation measure (−1 to 1).')}>
+              <span>{tx('Skor Silhouette', 'Silhouette Score')}</span>
               <strong className="tabular-nums">{selectedExperiment.silhouette_score != null && Number.isFinite(selectedExperiment.silhouette_score) ? formatNumber(selectedExperiment.silhouette_score, 4) : '—'}</strong>
             </div>
-            <div title="Konsistensi jumlah klaster terhadap kombinasi parameter tetangga pada grid (0 hingga 1).">
-              <span>Skor Stabilitas</span>
+            <div title={tx('Konsistensi jumlah klaster terhadap kombinasi parameter tetangga pada grid (0 hingga 1).', 'Cluster count stability across neighboring grid candidates (0 to 1).')}>
+              <span>{tx('Skor Stabilitas', 'Stability Score')}</span>
               <strong className="tabular-nums">{selectedExperiment.stability_score != null && Number.isFinite(selectedExperiment.stability_score) ? formatNumber(selectedExperiment.stability_score, 4) : '—'}</strong>
             </div>
-            <div title="Nilai gabungan multikriteria khusus eksperimen berstatus Valid.">
-              <span>Skor Rekomendasi</span>
+            <div title={tx('Nilai gabungan multikriteria khusus eksperimen berstatus Valid.', 'Weighted multi-criteria score for valid experiments.')}>
+              <span>{tx('Skor Rekomendasi', 'Rec. Score')}</span>
               <strong className="tabular-nums">{selectedExperiment.recommendation_score != null && Number.isFinite(selectedExperiment.recommendation_score) ? formatNumber(selectedExperiment.recommendation_score, 4) : '—'}</strong>
             </div>
           </div>
           <div className="final-method-note">
             <Database size={15} />
-            <span>Dataset #{selectedExperiment.dataset_id} · Proses Pencarian Parameter #{selectedExperiment.job_id}</span>
+            <span>Dataset #{selectedExperiment.dataset_id} · {tx('Proses Pencarian Parameter', 'Parameter Search Job')} #{selectedExperiment.job_id}</span>
           </div>
-        </div> : <StatePanel type="empty" title="Belum ada eksperimen dipilih" message={sourceLoading ? 'Menunggu pemeriksaan proses dan eksperimen.' : 'Pilih proses Pencarian Parameter yang berhasil dari daftar di sebelah kiri.'} />}
+        </div> : <StatePanel type="empty" title={tx('Belum ada eksperimen dipilih', 'No experiment selected')} message={sourceLoading ? tx('Menunggu pemeriksaan proses dan eksperimen.', 'Waiting for job verification and experiments.') : tx('Pilih proses Pencarian Parameter yang berhasil dari daftar di sebelah kiri.', 'Select a completed Parameter Search job on the left.')} />}
 
         {matchingExperiments.length > 0 && <div className="final-experiment-list-wrap">
           <div className="final-experiment-list-heading">
             <div>
-              <strong>Daftar Eksperimen</strong>
+              <strong>{tx('Daftar Eksperimen', 'Experiment List')}</strong>
               <span className="final-experiment-count-text">
-                Menampilkan {displayedExperiments.length} dari {matchingExperiments.length} eksperimen ({validExperiments.length} valid)
+                {tx(`Menampilkan ${displayedExperiments.length} dari ${matchingExperiments.length} eksperimen (${validExperiments.length} valid)`, `Showing ${displayedExperiments.length} of ${matchingExperiments.length} experiments (${validExperiments.length} valid)`)}
               </span>
             </div>
             {hasAnyValid && (
@@ -597,14 +599,14 @@ export function FinalDbscanPage() {
                   className={`final-filter-pill ${filterMode === 'VALID_ONLY' ? 'active' : ''}`}
                   onClick={() => setFilterMode('VALID_ONLY')}
                 >
-                  Hanya Valid ({validExperiments.length})
+                  {tx('Hanya Valid', 'Valid Only')} ({validExperiments.length})
                 </button>
                 <button
                   type="button"
                   className={`final-filter-pill ${filterMode === 'ALL' ? 'active' : ''}`}
                   onClick={() => setFilterMode('ALL')}
                 >
-                  Semua ({matchingExperiments.length})
+                  {tx('Semua', 'All')} ({matchingExperiments.length})
                 </button>
               </div>
             )}
@@ -625,18 +627,18 @@ export function FinalDbscanPage() {
                     <span className="experiment-radio" />
                     <span className="experiment-main">
                       <strong>
-                        Eksperimen #{item.id}
-                        {item.is_recommended && <span className="recommended-label" style={{ fontSize: '0.68rem', marginLeft: '6px' }}>Direkomendasikan</span>}
+                        {tx('Eksperimen', 'Experiment')} #{item.id}
+                        {item.is_recommended && <span className="recommended-label" style={{ fontSize: '0.68rem', marginLeft: '6px' }}>{tx('Direkomendasikan', 'Recommended')}</span>}
                       </strong>
                       <small className="tabular-nums">
-                        ε {formatNumber(item.eps_km, 2)} km · MinPts {item.min_samples} · Klaster: {formatNumber(item.cluster_count)}
+                        ε {formatNumber(item.eps_km, 2)} km · MinPts {item.min_samples} · {tx('Klaster', 'Clusters')}: {formatNumber(item.cluster_count)}
                       </small>
                     </span>
                     <span className="experiment-score tabular-nums">
                       {item.recommendation_score != null && Number.isFinite(item.recommendation_score)
                         ? formatNumber(item.recommendation_score, 4)
                         : (item.silhouette_score != null && Number.isFinite(item.silhouette_score) ? formatNumber(item.silhouette_score, 4) : '—')}
-                      <small>{item.recommendation_score != null ? 'Skor Rekomendasi' : 'Skor Silhouette'}</small>
+                      <small>{item.recommendation_score != null ? tx('Skor Rekomendasi', 'Rec. Score') : tx('Skor Silhouette', 'Silhouette Score')}</small>
                     </span>
                     <StatusBadge status={item.is_valid === true ? 'VALID' : item.is_valid === false ? 'INVALID' : 'HISTORIS'} />
                   </button>
@@ -648,40 +650,43 @@ export function FinalDbscanPage() {
       </GlassCard>
     </div>
 
-    <GlassCard title="Kemajuan DBSCAN Final" subtitle="Pantau progres eksekusi secara langsung.">
+    <GlassCard title={tx('Kemajuan DBSCAN Final', 'Final DBSCAN Progress')} subtitle={tx('Pantau progres eksekusi secara langsung.', 'Monitor execution progress in real time.')}>
       {jobId ? jobState.error && !currentFinalJob ? <div className="final-job-error-state">
-        <StatePanel type="error" title="Status proses tidak tersedia" message={jobState.error} action={<div className="final-job-error-actions"><button className="button button-secondary" type="button" onClick={jobState.reload}><RefreshCw size={13} /> Coba lagi</button><Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> Buka Manajemen Proses</Link></div>} />
-        <button className="text-button" type="button" onClick={() => setShowClearModal(true)}>Hentikan pemantauan pada tab ini <ExternalLink size={12} /></button>
+        <StatePanel type="error" title={tx('Status proses tidak tersedia', 'Job status unavailable')} message={jobState.error} action={<div className="final-job-error-actions"><button className="button button-secondary" type="button" onClick={jobState.reload}><RefreshCw size={13} /> {tx('Coba lagi', 'Try again')}</button><Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> {tx('Buka Manajemen Proses', 'Open Job Management')}</Link></div>} />
+        <button className="text-button" type="button" onClick={() => setShowClearModal(true)}>{tx('Hentikan pemantauan pada tab ini', 'Stop tracking in this tab')} <ExternalLink size={12} /></button>
       </div> : currentFinalJob ? <div className="job-progress">
-        <div className="job-progress-head"><div><span className="eyebrow">PROSES #{jobId} · EKSEKUSI #{resolvedRunId ?? '—'}</span><h3>Klasterisasi Final</h3></div><StatusBadge status={currentFinalJob.status} /></div>
+        <div className="job-progress-head"><div><span className="eyebrow">{tx('PROSES', 'JOB')} #{jobId} · {tx('EKSEKUSI', 'RUN')} #{resolvedRunId ?? '—'}</span><h3>{tx('Klasterisasi Final', 'Final Clustering')}</h3></div><StatusBadge status={currentFinalJob.status} /></div>
         <div className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, currentFinalJob.progress || 0))}%` }} /></div>
-        <div className="progress-label"><strong>{formatNumber(currentFinalJob.progress || 0)}%</strong><span>{currentFinalJob.current_step ? processStepLabel(currentFinalJob.current_step) : currentFinalJob.message || 'Menunggu pembaruan status'}</span></div>
-        <div className="final-job-meta"><span>Dataset #{currentFinalJob.dataset_id}</span><span>Dibuat {formatDate(currentFinalJob.created_at)}</span><span>{currentFinalJob.finished_at ? `Selesai ${formatDate(currentFinalJob.finished_at)}` : `Mulai ${formatDate(currentFinalJob.started_at)}`}</span></div>
-        {currentFinalJob.status === 'FAILED' && <div className="form-error">{friendlyErrorMessage(currentFinalJob.error_code || 'JOB_FAILED')} {currentFinalJob.message ? `· ${friendlyErrorMessage(currentFinalJob.message)}` : ''}</div>}
-        {currentFinalJob.status === 'SUCCESS' && <div className="success-panel"><CheckCircle2 size={17} /><div><strong>Proses berhasil diselesaikan</strong><span>Periksa rincian hasil pada Riwayat Eksekusi sebelum mengaktifkannya.</span></div></div>}
-        {currentFinalJob.status === 'SUCCESS' && <Link className="button button-secondary final-run-link" to="/admin/riwayat-run"><Database size={14} /> Buka Riwayat Eksekusi <ArrowRight size={13} /></Link>}
-        {currentFinalJob.status === 'FAILED' && <p className="subtle-copy">Proses gagal. Periksa keterangannya pada Manajemen Proses sebelum menjalankan proses baru.</p>}
+        <div className="progress-label"><strong>{formatNumber(currentFinalJob.progress || 0)}%</strong><span>{currentFinalJob.current_step ? processStepLabel(currentFinalJob.current_step, lang) : currentFinalJob.message || tx('Menunggu pembaruan status', 'Waiting for status updates')}</span></div>
+        <div className="final-job-meta"><span>Dataset #{currentFinalJob.dataset_id}</span><span>{tx('Dibuat', 'Created')} {formatDate(currentFinalJob.created_at)}</span><span>{currentFinalJob.finished_at ? `${tx('Selesai', 'Finished')} ${formatDate(currentFinalJob.finished_at)}` : `${tx('Mulai', 'Started')} ${formatDate(currentFinalJob.started_at)}`}</span></div>
+        {currentFinalJob.status === 'FAILED' && <div className="form-error">{friendlyErrorMessage(currentFinalJob.error_code || 'JOB_FAILED', undefined, undefined, lang)} {currentFinalJob.message ? `· ${friendlyErrorMessage(currentFinalJob.message, undefined, undefined, lang)}` : ''}</div>}
+        {currentFinalJob.status === 'SUCCESS' && <div className="success-panel"><CheckCircle2 size={17} /><div><strong>{tx('Proses berhasil diselesaikan', 'Job completed successfully')}</strong><span>{tx('Periksa rincian hasil pada Riwayat Eksekusi sebelum mengaktifkannya.', 'Review execution results in Execution History before activating.')}</span></div></div>}
+        {currentFinalJob.status === 'SUCCESS' && <Link className="button button-secondary final-run-link" to="/admin/riwayat-run"><Database size={14} /> {tx('Buka Riwayat Eksekusi', 'Open Execution History')} <ArrowRight size={13} /></Link>}
+        {currentFinalJob.status === 'FAILED' && <p className="subtle-copy">{tx('Proses gagal. Periksa keterangannya pada Manajemen Proses sebelum menjalankan proses baru.', 'Job failed. Inspect failure details in Job Management before restarting.')}</p>}
         <JobLifecycleControls job={currentFinalJob} onJobChanged={jobState.reload} onRestarted={(newJobId) => { setSelectedDatasetId(currentFinalJob.dataset_id); setJobId(newJobId); setRunId(null); }} />
-      </div> : <StatePanel type="loading" title="Memulihkan status proses" message="Mengambil status proses terakhir." />
-        : <StatePanel type="info" title="Belum ada proses DBSCAN Final" message="Setelah permintaan diterima, status dan progres akan ditampilkan serta disimpan agar dapat dipulihkan setelah halaman dimuat ulang." />}
+      </div> : <StatePanel type="loading" title={tx('Memulihkan status proses', 'Restoring job status')} message={tx('Mengambil status proses terakhir.', 'Fetching latest job status.')} />
+        : <StatePanel type="info" title={tx('Belum ada proses DBSCAN Final', 'No Final DBSCAN job active')} message={tx('Setelah permintaan diterima, status dan progres akan ditampilkan serta disimpan agar dapat dipulihkan setelah halaman dimuat ulang.', 'Once submitted, job progress will appear here and persist across page refreshes.')} />}
     </GlassCard>
 
     <ConfirmModal
       isOpen={showClearModal}
       variant="danger"
-      title="Hentikan Pemantauan di Tab Ini"
+      title={tx('Hentikan Pemantauan di Tab Ini', 'Stop Tracking in This Tab')}
       icon={<AlertTriangle size={22} />}
-      confirmLabel="Ya, Hentikan Pemantauan"
-      cancelLabel="Batal"
+      confirmLabel={tx('Ya, Hentikan Pemantauan', 'Yes, Stop Tracking')}
+      cancelLabel={tx('Batal', 'Cancel')}
       onCancel={() => setShowClearModal(false)}
       onConfirm={handleConfirmClearTracking}
       message={
         <div>
           <p>
-            Tindakan ini hanya menghapus ID pemantauan proses dari tab browser Anda saat ini.
+            {tx('Tindakan ini hanya menghapus ID pemantauan proses dari tab browser Anda saat ini.', 'This action only removes job tracking from your current browser tab.')}
           </p>
           <p style={{ marginTop: '8px', color: '#ffb3c0', fontSize: '12px' }}>
-            Proses yang berjalan di server <strong>TIDAK dibatalkan</strong>. Lanjutkan hanya jika Anda sudah memastikan tidak ada Klasterisasi Final yang masih berjalan di Manajemen Proses.
+            {tx(
+              <>Proses yang berjalan di server <strong>TIDAK dibatalkan</strong>. Lanjutkan hanya jika Anda sudah memastikan tidak ada Klasterisasi Final yang masih berjalan di Manajemen Proses.</>,
+              <>Any active server job is <strong>NOT cancelled</strong>. Continue only if you have confirmed no Final Clustering job is running in Job Management.</>,
+            )}
           </p>
         </div>
       }

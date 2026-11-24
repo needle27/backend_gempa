@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, Database, LoaderCircle, Sparkles } from 'lucide-react';
 import { IS_PREVIEW_MODE } from '../config/env';
+import { getActiveLanguage, useI18n } from '../i18n/LanguageContext';
 import { displayValue, fieldLabel, friendlyErrorMessage, statusLabel } from '../utils/presentation';
 
 export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
@@ -28,8 +29,9 @@ export function StatePanel({
   action?: ReactNode;
   progress?: number | null;
 }) {
+  const { lang, tx } = useI18n();
   const Icon = type === 'loading' ? LoaderCircle : type === 'error' ? AlertCircle : type === 'empty' ? Database : Sparkles;
-  const visibleMessage = type === 'error' ? friendlyErrorMessage(message) : message;
+  const visibleMessage = type === 'error' ? friendlyErrorMessage(message, undefined, undefined, lang) : message;
   const hasProgress = type === 'loading' && typeof progress === 'number' && Number.isFinite(progress);
   const clampedProgress = hasProgress ? Math.max(0, Math.min(100, Math.round(progress))) : 0;
 
@@ -53,7 +55,7 @@ export function StatePanel({
               <span style={{ width: `${clampedProgress}%` }} />
             </div>
             <div className="state-progress-meta">
-              <span>Memproses sebaran titik spasial</span>
+              <span>{tx('Memproses sebaran titik spasial', 'Processing spatial point distribution')}</span>
               <strong className="tabular-nums">{formatNumber(clampedProgress)}%</strong>
             </div>
           </div>
@@ -65,6 +67,7 @@ export function StatePanel({
 }
 
 export function StatusBadge({ status }: { status: string }) {
+  const { lang } = useI18n();
   const normalized = status.toUpperCase();
   const tone = ['SUCCESS', 'READY', 'PROCESSED', 'ACTIVE', 'VALID', 'RECOMMENDED'].includes(normalized)
     ? 'success'
@@ -75,16 +78,18 @@ export function StatusBadge({ status }: { status: string }) {
         : ['QUEUED', 'PENDING', 'PAUSE_REQUESTED', 'PAUSED'].includes(normalized)
           ? 'warning'
           : 'neutral';
-  return <span className={`status-badge status-${tone}`} data-status={normalized}><i />{statusLabel(status)}</span>;
+  return <span className={`status-badge status-${tone}`} data-status={normalized}><i />{statusLabel(status, lang)}</span>;
 }
 
 export function PreviewBanner() {
+  const { t } = useI18n();
   if (!IS_PREVIEW_MODE) return null;
-  return <div className="preview-banner"><Sparkles size={14} /><strong>Mode Pratinjau</strong><span>Seluruh data yang tampil merupakan simulasi. Perubahan data dinonaktifkan.</span></div>;
+  return <div className="preview-banner"><Sparkles size={14} /><strong>{t.common.previewBannerTitle}</strong><span>{t.common.previewBannerBody}</span></div>;
 }
 
 export function SimulationTag() {
-  return IS_PREVIEW_MODE ? <span className="simulation-tag"><Sparkles size={11} /> Data Simulasi</span> : null;
+  const { t } = useI18n();
+  return IS_PREVIEW_MODE ? <span className="simulation-tag"><Sparkles size={11} /> {t.common.previewBadge}</span> : null;
 }
 
 export function SourceNote({ children }: { children: ReactNode }) {
@@ -104,10 +109,9 @@ export function formatDate(value: string | null | undefined) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  const locale = getActiveLanguage() === 'en' ? 'en-US' : 'id-ID';
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
-
-
 
 const HIDDEN_DETAIL_FIELDS = new Set(['password', 'token', 'secret', 'authorization', 'cookie', 'user_agent', 'file_hash_sha256', 'eps_radian', 'error_code', 'request_id']);
 
@@ -120,17 +124,17 @@ function parseNestedRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export function RecordDetails({ record, omit = [], depth = 0 }: { record: Record<string, unknown>; omit?: string[]; depth?: number }) {
+  const { lang, t, tx } = useI18n();
   const omitted = new Set([...HIDDEN_DETAIL_FIELDS, ...omit]);
   const entries = Object.entries(record).filter(([key, value]) => !omitted.has(key.toLowerCase()) && value !== undefined && value !== null && value !== '');
-  if (!entries.length) return <p className="muted-text">Tidak ada rincian tambahan yang tersedia.</p>;
+  if (!entries.length) return <p className="muted-text">{t.common.emptyAdditionalDetails}</p>;
   return <div className={`detail-grid record-detail-grid ${depth ? 'record-detail-nested' : ''}`}>{entries.map(([key, value]) => {
     const nestedRecord = parseNestedRecord(value);
     return <div className="detail-item" key={key}>
-      <span>{fieldLabel(key)}</span>
+      <span>{fieldLabel(key, lang)}</span>
       {nestedRecord && depth < 2
-        ? <details className="record-nested-details"><summary>Lihat {Object.keys(nestedRecord).length} rincian</summary><RecordDetails record={nestedRecord} omit={omit} depth={depth + 1} /></details>
-        : <strong>{nestedRecord ? 'Rincian tambahan tersedia' : displayValue(value, key)}</strong>}
+        ? <details className="record-nested-details"><summary>{tx(`Lihat ${Object.keys(nestedRecord).length} rincian`, `View ${Object.keys(nestedRecord).length} details`)}</summary><RecordDetails record={nestedRecord} omit={omit} depth={depth + 1} /></details>
+        : <strong>{nestedRecord ? tx('Rincian tambahan tersedia', 'Additional details available') : displayValue(value, key, lang)}</strong>}
     </div>;
   })}</div>;
 }
-

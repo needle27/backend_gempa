@@ -1,5 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { getActiveLanguage, useI18n } from '../i18n/LanguageContext';
+import type { Language } from '../i18n/types';
 import type { ClusterProfile } from '../types/domain';
 import { clusterColor, DEPTH_CATEGORY_COLORS } from '../utils/clusterColors';
 
@@ -27,6 +29,7 @@ type ChartTooltipProps = {
   label?: string | number;
   payload?: TooltipPayloadItem[];
   variant: TooltipVariant;
+  lang: Language;
 };
 type ShareSlice = {
   name: string;
@@ -38,15 +41,17 @@ type ShareSlice = {
 
 const TOP_CLUSTER_LIMIT = 10;
 
-const DEPTH_SERIES = [
-  { key: 'shallow', label: 'Dangkal', color: DEPTH_CATEGORY_COLORS.shallow },
-  { key: 'medium', label: 'Menengah', color: DEPTH_CATEGORY_COLORS.medium },
-  { key: 'deep', label: 'Dalam', color: DEPTH_CATEGORY_COLORS.deep },
-] as const;
-
 const numberFormat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 });
 const countFormat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
 const axisCountFormat = new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
+
+function depthSeriesFor(lang: Language) {
+  return [
+    { key: 'shallow', label: lang === 'en' ? 'Shallow' : 'Dangkal', color: DEPTH_CATEGORY_COLORS.shallow },
+    { key: 'medium', label: lang === 'en' ? 'Intermediate' : 'Menengah', color: DEPTH_CATEGORY_COLORS.medium },
+    { key: 'deep', label: lang === 'en' ? 'Deep' : 'Dalam', color: DEPTH_CATEGORY_COLORS.deep },
+  ] as const;
+}
 
 function numericValue(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -71,18 +76,29 @@ export function formatClusterScopeSubtitle(
   scope: ClusterChartScope,
   totalCount: number,
   isScrollable = scope === 'all' && totalCount > TOP_CLUSTER_LIMIT,
+  lang: Language = getActiveLanguage(),
 ): string {
-  if (totalCount <= 0) return 'Belum ada profil klaster yang tersedia.';
+  if (totalCount <= 0) {
+    return lang === 'en' ? 'No cluster profiles available yet.' : 'Belum ada profil klaster yang tersedia.';
+  }
   if (totalCount <= TOP_CLUSTER_LIMIT) {
-    return `Menampilkan seluruh ${displayNumber(totalCount, true)} klaster (urut anggota terbanyak).`;
+    return lang === 'en'
+      ? `Showing all ${displayNumber(totalCount, true)} clusters (sorted by member count).`
+      : `Menampilkan seluruh ${displayNumber(totalCount, true)} klaster (urut anggota terbanyak).`;
   }
   if (scope === 'top10') {
-    return `Menampilkan ${displayNumber(TOP_CLUSTER_LIMIT, true)} klaster terbesar dari ${displayNumber(totalCount, true)} klaster; seluruh klaster tersedia pada tabel profil.`;
+    return lang === 'en'
+      ? `Showing top ${displayNumber(TOP_CLUSTER_LIMIT, true)} largest of ${displayNumber(totalCount, true)} clusters; all clusters are listed in the profile table.`
+      : `Menampilkan ${displayNumber(TOP_CLUSTER_LIMIT, true)} klaster terbesar dari ${displayNumber(totalCount, true)} klaster; seluruh klaster tersedia pada tabel profil.`;
   }
   if (isScrollable) {
-    return `Menampilkan seluruh ${displayNumber(totalCount, true)} klaster (urut anggota terbanyak); geser horizontal untuk melihat semua.`;
+    return lang === 'en'
+      ? `Showing all ${displayNumber(totalCount, true)} clusters (sorted by member count); scroll horizontally to inspect all.`
+      : `Menampilkan seluruh ${displayNumber(totalCount, true)} klaster (urut anggota terbanyak); geser horizontal untuk melihat semua.`;
   }
-  return `Menampilkan seluruh ${displayNumber(totalCount, true)} klaster (urut anggota terbanyak).`;
+  return lang === 'en'
+    ? `Showing all ${displayNumber(totalCount, true)} clusters (sorted by member count).`
+    : `Menampilkan seluruh ${displayNumber(totalCount, true)} klaster (urut anggota terbanyak).`;
 }
 
 function useClusterChartData(
@@ -114,10 +130,10 @@ function useClusterChartData(
   };
 }
 
-function tooltipTitle(record: TooltipRecord, label?: string | number): string {
+function tooltipTitle(record: TooltipRecord, label: string | number | undefined, lang: Language): string {
   if (typeof record.name === 'string' && record.name.trim()) return record.name;
   if (label !== undefined && label !== null && String(label).trim()) return String(label);
-  return 'Rincian data';
+  return lang === 'en' ? 'Data details' : 'Rincian data';
 }
 
 function TooltipRow({ label, value, color, suffix }: { label: string; value: string; color: string; suffix?: string }) {
@@ -130,41 +146,44 @@ function TooltipRow({ label, value, color, suffix }: { label: string; value: str
 }
 
 /** Compact, shared tooltip. The donut uses an adjacent detail list to keep its center clear. */
-function ChartTooltip({ active, label, payload, variant }: ChartTooltipProps) {
+function ChartTooltip({ active, label, payload, variant, lang }: ChartTooltipProps) {
   if (!active || !payload?.length) return null;
 
   const record = payload[0]?.payload || {};
-  const title = tooltipTitle(record, label);
+  const title = tooltipTitle(record, label, lang);
   const clusterId = typeof record.clusterId === 'number' ? record.clusterId : -1;
   const clusterAccent = clusterColor(clusterId);
+  const depthSeries = depthSeriesFor(lang);
   let rows: Array<{ label: string; value: string; color: string; suffix?: string }> = [];
-  let kicker = 'RINCIAN KLASTER';
+  let kicker = lang === 'en' ? 'CLUSTER DETAILS' : 'RINCIAN KLASTER';
   let total: number | null = null;
-  let totalLabel = 'Total kejadian';
+  let totalLabel = lang === 'en' ? 'Total events' : 'Total kejadian';
   let totalSuffix = '';
 
   if (variant === 'distribution') {
-    rows = [{ label: 'Jumlah kejadian', value: displayNumber(record.total, true), color: clusterAccent }];
+    rows = [{ label: lang === 'en' ? 'Event count' : 'Jumlah kejadian', value: displayNumber(record.total, true), color: clusterAccent }];
   } else if (variant === 'depth' || variant === 'depthPercent') {
-    kicker = 'PROFIL KEDALAMAN';
+    kicker = lang === 'en' ? 'DEPTH PROFILE' : 'PROFIL KEDALAMAN';
     const isPercentage = variant === 'depthPercent';
-    rows = DEPTH_SERIES.map((series) => ({
+    rows = depthSeries.map((series) => ({
       label: series.label,
       value: displayNumber(record[series.key], !isPercentage),
       color: series.color,
       suffix: isPercentage ? '%' : undefined,
     }));
     total = isPercentage
-      ? DEPTH_SERIES.some((series) => numericValue(record[`${series.key}Count`]) > 0) ? 100 : 0
-      : DEPTH_SERIES.reduce((sum, series) => sum + numericValue(record[series.key]), 0);
-    totalLabel = isPercentage ? 'Total komposisi' : 'Total kejadian';
+      ? depthSeries.some((series) => numericValue(record[`${series.key}Count`]) > 0) ? 100 : 0
+      : depthSeries.reduce((sum, series) => sum + numericValue(record[series.key]), 0);
+    totalLabel = isPercentage
+      ? (lang === 'en' ? 'Total composition' : 'Total komposisi')
+      : (lang === 'en' ? 'Total events' : 'Total kejadian');
     totalSuffix = isPercentage ? '%' : '';
   } else if (variant === 'magnitude') {
-    kicker = 'RATA-RATA MAGNITUDO';
-    rows = [{ label: 'Magnitudo rata-rata', value: displayOptionalNumber(record.magnitude), color: clusterAccent }];
+    kicker = lang === 'en' ? 'AVERAGE MAGNITUDE' : 'RATA-RATA MAGNITUDO';
+    rows = [{ label: lang === 'en' ? 'Mean magnitude' : 'Magnitudo rata-rata', value: displayOptionalNumber(record.magnitude), color: clusterAccent }];
   } else {
-    kicker = 'RATA-RATA KEDALAMAN';
-    rows = [{ label: 'Kedalaman rata-rata', value: displayOptionalNumber(record.depth), color: clusterAccent, suffix: ' km' }];
+    kicker = lang === 'en' ? 'AVERAGE DEPTH' : 'RATA-RATA KEDALAMAN';
+    rows = [{ label: lang === 'en' ? 'Mean depth' : 'Kedalaman rata-rata', value: displayOptionalNumber(record.depth), color: clusterAccent, suffix: ' km' }];
   }
 
   return (
@@ -210,6 +229,7 @@ export function ClusterScopeControl({
   onChange: (nextScope: ClusterChartScope) => void;
   hideSubtitle?: boolean;
 }) {
+  const { lang, tx } = useI18n();
   const hasOverflow = totalCount > TOP_CLUSTER_LIMIT;
   const effectiveScope: ClusterChartScope = hasOverflow ? scope : 'all';
   const isScrollable = effectiveScope === 'all' && totalCount > TOP_CLUSTER_LIMIT;
@@ -220,15 +240,15 @@ export function ClusterScopeControl({
     <div className="chart-scope-block">
       {hasOverflow && (
         <div className="chart-mode-row">
-          <span className="chart-mode-label">Cakupan klaster</span>
-          <div className="chart-mode-group" role="group" aria-label="Pilih jumlah klaster yang ditampilkan">
-            <ChartModeButton active={effectiveScope === 'top10'} onClick={() => onChange('top10')}>10 Terbesar</ChartModeButton>
-            <ChartModeButton active={effectiveScope === 'all'} onClick={() => onChange('all')}>Semua Klaster</ChartModeButton>
+          <span className="chart-mode-label">{tx('Cakupan klaster', 'Cluster scope')}</span>
+          <div className="chart-mode-group" role="group" aria-label={tx('Pilih jumlah klaster yang ditampilkan', 'Select number of clusters displayed')}>
+            <ChartModeButton active={effectiveScope === 'top10'} onClick={() => onChange('top10')}>{tx('10 Terbesar', 'Top 10')}</ChartModeButton>
+            <ChartModeButton active={effectiveScope === 'all'} onClick={() => onChange('all')}>{tx('Semua Klaster', 'All Clusters')}</ChartModeButton>
           </div>
         </div>
       )}
       {!hideSubtitle && (
-        <p className="chart-mode-hint">{formatClusterScopeSubtitle(effectiveScope, totalCount, isScrollable)}</p>
+        <p className="chart-mode-hint">{formatClusterScopeSubtitle(effectiveScope, totalCount, isScrollable, lang)}</p>
       )}
     </div>
   );
@@ -268,6 +288,7 @@ export function ClusterDistributionChart({
   hideScopeControl = false,
   hideScopeSubtitle = false,
 }: ClusterBarChartProps) {
+  const { lang, tx } = useI18n();
   const [scaleMode, setScaleMode] = useState<'linear' | 'log'>('linear');
   const { visibleProfiles, totalCount, scope, setScope, isScrollable } = useClusterChartData(
     profiles,
@@ -276,7 +297,7 @@ export function ClusterDistributionChart({
   );
 
   const data = visibleProfiles.map((item) => ({
-    name: `Klaster ${item.cluster_id}`,
+    name: `${tx('Klaster', 'Cluster')} ${item.cluster_id}`,
     clusterId: item.cluster_id,
     total: item.event_count,
     chartTotal: scaleMode === 'log' && item.event_count <= 0 ? null : item.event_count,
@@ -285,10 +306,10 @@ export function ClusterDistributionChart({
   return (
     <div className="chart-module">
       <div className="chart-mode-row">
-        <span className="chart-mode-label">Skala jumlah anggota</span>
-        <div className="chart-mode-group" role="group" aria-label="Pilih skala grafik jumlah anggota">
+        <span className="chart-mode-label">{tx('Skala jumlah anggota', 'Member count scale')}</span>
+        <div className="chart-mode-group" role="group" aria-label={tx('Pilih skala grafik jumlah anggota', 'Select member count chart scale')}>
           <ChartModeButton active={scaleMode === 'linear'} onClick={() => setScaleMode('linear')}>Linear</ChartModeButton>
-          <ChartModeButton active={scaleMode === 'log'} onClick={() => setScaleMode('log')}>Logaritmik</ChartModeButton>
+          <ChartModeButton active={scaleMode === 'log'} onClick={() => setScaleMode('log')}>{tx('Logaritmik', 'Logarithmic')}</ChartModeButton>
         </div>
       </div>
       {!hideScopeControl && (
@@ -299,7 +320,7 @@ export function ClusterDistributionChart({
           hideSubtitle={hideScopeSubtitle}
         />
       )}
-      <p className="chart-mode-hint">Skala logaritmik membantu membandingkan klaster kecil ketika jumlah anggotanya berbeda jauh.</p>
+      <p className="chart-mode-hint">{tx('Skala logaritmik membantu membandingkan klaster kecil ketika jumlah anggotanya berbeda jauh.', 'Logarithmic scale helps compare smaller clusters when member counts span wide ranges.')}</p>
       <ScrollableChartFrame isScrollable={isScrollable} itemCount={data.length}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 12, right: 10, left: -14, bottom: 0 }}>
@@ -320,7 +341,7 @@ export function ClusterDistributionChart({
               domain={scaleMode === 'log' ? [1, 'auto'] : [0, 'auto']}
               tickFormatter={(value: number) => axisCountFormat.format(value)}
             />
-            <Tooltip content={<ChartTooltip variant="distribution" />} cursor={false} wrapperStyle={tooltipWrapperStyle} allowEscapeViewBox={{ x: false, y: false }} />
+            <Tooltip content={<ChartTooltip variant="distribution" lang={lang} />} cursor={false} wrapperStyle={tooltipWrapperStyle} allowEscapeViewBox={{ x: false, y: false }} />
             <Bar dataKey="chartTotal" radius={[6, 6, 0, 0]} activeBar={{ stroke: 'rgba(235,245,255,.62)', strokeWidth: 1, fillOpacity: 0.96 }}>
               {data.map((item) => <Cell key={item.clusterId} fill={clusterColor(item.clusterId)} />)}
             </Bar>
@@ -338,6 +359,7 @@ export function DepthProfileChart({
   hideScopeControl = false,
   hideScopeSubtitle = false,
 }: ClusterBarChartProps) {
+  const { lang, tx } = useI18n();
   const [displayMode, setDisplayMode] = useState<'count' | 'percentage'>('count');
   const { visibleProfiles, totalCount, scope, setScope, isScrollable } = useClusterChartData(
     profiles,
@@ -352,7 +374,7 @@ export function DepthProfileChart({
     const total = shallowCount + mediumCount + deepCount;
     const toPercent = (value: number) => total > 0 ? (value / total) * 100 : 0;
     return {
-      name: `Klaster ${item.cluster_id}`,
+      name: `${tx('Klaster', 'Cluster')} ${item.cluster_id}`,
       clusterId: item.cluster_id,
       shallow: displayMode === 'percentage' ? toPercent(shallowCount) : shallowCount,
       medium: displayMode === 'percentage' ? toPercent(mediumCount) : mediumCount,
@@ -366,10 +388,10 @@ export function DepthProfileChart({
   return (
     <div className="chart-module">
       <div className="chart-mode-row">
-        <span className="chart-mode-label">Tampilan profil</span>
-        <div className="chart-mode-group" role="group" aria-label="Pilih tampilan profil kedalaman">
-          <ChartModeButton active={displayMode === 'count'} onClick={() => setDisplayMode('count')}>Jumlah</ChartModeButton>
-          <ChartModeButton active={displayMode === 'percentage'} onClick={() => setDisplayMode('percentage')}>Persentase</ChartModeButton>
+        <span className="chart-mode-label">{tx('Tampilan profil', 'Profile view')}</span>
+        <div className="chart-mode-group" role="group" aria-label={tx('Pilih tampilan profil kedalaman', 'Select depth profile view')}>
+          <ChartModeButton active={displayMode === 'count'} onClick={() => setDisplayMode('count')}>{tx('Jumlah', 'Count')}</ChartModeButton>
+          <ChartModeButton active={displayMode === 'percentage'} onClick={() => setDisplayMode('percentage')}>{tx('Persentase', 'Percentage')}</ChartModeButton>
         </div>
       </div>
       {!hideScopeControl && (
@@ -400,7 +422,7 @@ export function DepthProfileChart({
               ticks={displayMode === 'percentage' ? [0, 25, 50, 75, 100] : undefined}
               tickFormatter={(value: number) => displayMode === 'percentage' ? `${Math.round(value)}%` : axisCountFormat.format(value)}
             />
-            <Tooltip content={<ChartTooltip variant={displayMode === 'percentage' ? 'depthPercent' : 'depth'} />} cursor={false} wrapperStyle={tooltipWrapperStyle} allowEscapeViewBox={{ x: false, y: false }} />
+            <Tooltip content={<ChartTooltip variant={displayMode === 'percentage' ? 'depthPercent' : 'depth'} lang={lang} />} cursor={false} wrapperStyle={tooltipWrapperStyle} allowEscapeViewBox={{ x: false, y: false }} />
             <Bar dataKey="shallow" stackId="a" fill={DEPTH_CATEGORY_COLORS.shallow} activeBar={{ stroke: 'rgba(235,245,255,.62)', strokeWidth: 1, fillOpacity: 0.96 }} />
             <Bar dataKey="medium" stackId="a" fill={DEPTH_CATEGORY_COLORS.medium} activeBar={{ stroke: 'rgba(235,245,255,.62)', strokeWidth: 1, fillOpacity: 0.96 }} />
             <Bar dataKey="deep" stackId="a" fill={DEPTH_CATEGORY_COLORS.deep} radius={[5, 5, 0, 0]} activeBar={{ stroke: 'rgba(235,245,255,.62)', strokeWidth: 1, fillOpacity: 0.96 }} />
@@ -412,13 +434,14 @@ export function DepthProfileChart({
 }
 
 export function ClusterShareChart({ profiles, clusterCount }: { profiles: ClusterProfile[]; clusterCount: number }) {
+  const { tx } = useI18n();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const totalEvents = profiles.reduce((sum, item) => sum + item.event_count, 0);
   const rankedProfiles = useMemo(() => sortProfilesByEventCount(profiles), [profiles]);
   const visibleProfiles = rankedProfiles.slice(0, 6);
   const remainingProfiles = rankedProfiles.slice(6);
   const data: ShareSlice[] = visibleProfiles.map((item) => ({
-    name: `Klaster ${item.cluster_id}`,
+    name: `${tx('Klaster', 'Cluster')} ${item.cluster_id}`,
     clusterId: item.cluster_id,
     value: item.event_count,
     percentage: totalEvents > 0 ? (item.event_count / totalEvents) * 100 : 0,
@@ -428,7 +451,7 @@ export function ClusterShareChart({ profiles, clusterCount }: { profiles: Cluste
   if (remainingProfiles.length > 0) {
     const remainingCount = remainingProfiles.reduce((sum, item) => sum + item.event_count, 0);
     data.push({
-      name: `Klaster lainnya (${remainingProfiles.length})`,
+      name: tx(`Klaster lainnya (${remainingProfiles.length})`, `Other clusters (${remainingProfiles.length})`),
       clusterId: -2,
       value: remainingCount,
       percentage: totalEvents > 0 ? (remainingCount / totalEvents) * 100 : 0,
@@ -459,12 +482,12 @@ export function ClusterShareChart({ profiles, clusterCount }: { profiles: Cluste
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="chart-center"><strong>{displayNumber(clusterCount, true)}</strong><span>KLASTER</span></div>
+        <div className="chart-center"><strong>{displayNumber(clusterCount, true)}</strong><span>{tx('KLASTER', 'CLUSTERS')}</span></div>
       </div>
       <div className="share-chart-details">
         <div className="share-chart-details-heading">
-          <strong>Anggota dan proporsi</strong>
-          <span>{remainingProfiles.length > 0 ? '6 terbesar + lainnya' : 'Seluruh klaster'}</span>
+          <strong>{tx('Anggota dan proporsi', 'Members & share')}</strong>
+          <span>{remainingProfiles.length > 0 ? tx('6 terbesar + lainnya', 'Top 6 + others') : tx('Seluruh klaster', 'All clusters')}</span>
         </div>
         <div className="share-chart-list">
           {data.map((item, index) => (
@@ -477,7 +500,7 @@ export function ClusterShareChart({ profiles, clusterCount }: { profiles: Cluste
               onFocus={() => setActiveIndex(index)}
               onBlur={() => setActiveIndex(null)}
               aria-pressed={activeIndex === index}
-              aria-label={`${item.name}, ${displayNumber(item.value, true)} anggota, ${displayNumber(item.percentage)} persen`}
+              aria-label={tx(`${item.name}, ${displayNumber(item.value, true)} anggota, ${displayNumber(item.percentage)} persen`, `${item.name}, ${displayNumber(item.value, true)} members, ${displayNumber(item.percentage)} percent`)}
             >
               <i className="share-chart-dot" style={{ backgroundColor: item.color }} />
               <span className="share-chart-item-name">{item.name}</span>
@@ -486,7 +509,7 @@ export function ClusterShareChart({ profiles, clusterCount }: { profiles: Cluste
             </button>
           ))}
         </div>
-        <p className="share-chart-footnote">Proporsi dihitung dari seluruh anggota profil klaster.</p>
+        <p className="share-chart-footnote">{tx('Proporsi dihitung dari seluruh anggota profil klaster.', 'Shares are calculated across all cluster profile members.')}</p>
       </div>
     </div>
   );
@@ -499,6 +522,7 @@ export function MagnitudeProfileChart({
   hideScopeControl = false,
   hideScopeSubtitle = false,
 }: ClusterBarChartProps) {
+  const { lang, tx } = useI18n();
   const { visibleProfiles, totalCount, scope, setScope, isScrollable } = useClusterChartData(
     profiles,
     clusterScope,
@@ -506,7 +530,7 @@ export function MagnitudeProfileChart({
   );
 
   const data = visibleProfiles.map((item) => ({
-    name: `Klaster ${item.cluster_id}`,
+    name: `${tx('Klaster', 'Cluster')} ${item.cluster_id}`,
     clusterId: item.cluster_id,
     magnitude: item.avg_magnitude,
   }));
@@ -534,7 +558,7 @@ export function MagnitudeProfileChart({
               minTickGap={isScrollable ? 4 : 8}
             />
             <YAxis tick={axisTick} axisLine={false} tickLine={false} domain={[0, 'auto']} tickFormatter={(value: number) => displayNumber(value)} />
-            <Tooltip content={<ChartTooltip variant="magnitude" />} cursor={false} wrapperStyle={tooltipWrapperStyle} allowEscapeViewBox={{ x: false, y: false }} />
+            <Tooltip content={<ChartTooltip variant="magnitude" lang={lang} />} cursor={false} wrapperStyle={tooltipWrapperStyle} allowEscapeViewBox={{ x: false, y: false }} />
             <Bar dataKey="magnitude" radius={[6, 6, 0, 0]} activeBar={{ stroke: 'rgba(235,245,255,.62)', strokeWidth: 1, fillOpacity: 0.96 }}>
               {data.map((item) => <Cell key={item.clusterId} fill={clusterColor(item.clusterId)} />)}
             </Bar>
@@ -552,6 +576,7 @@ export function DepthAverageChart({
   hideScopeControl = false,
   hideScopeSubtitle = false,
 }: ClusterBarChartProps) {
+  const { lang, tx } = useI18n();
   const { visibleProfiles, totalCount, scope, setScope, isScrollable } = useClusterChartData(
     profiles,
     clusterScope,
@@ -559,7 +584,7 @@ export function DepthAverageChart({
   );
 
   const data = visibleProfiles.map((item) => ({
-    name: `Klaster ${item.cluster_id}`,
+    name: `${tx('Klaster', 'Cluster')} ${item.cluster_id}`,
     clusterId: item.cluster_id,
     depth: item.avg_depth,
   }));
@@ -587,7 +612,7 @@ export function DepthAverageChart({
               minTickGap={isScrollable ? 4 : 8}
             />
             <YAxis tick={axisTick} axisLine={false} tickLine={false} domain={[0, 'auto']} tickFormatter={(value: number) => axisCountFormat.format(value)} />
-            <Tooltip content={<ChartTooltip variant="depthAverage" />} cursor={false} wrapperStyle={tooltipWrapperStyle} allowEscapeViewBox={{ x: false, y: false }} />
+            <Tooltip content={<ChartTooltip variant="depthAverage" lang={lang} />} cursor={false} wrapperStyle={tooltipWrapperStyle} allowEscapeViewBox={{ x: false, y: false }} />
             <Bar dataKey="depth" radius={[6, 6, 0, 0]} activeBar={{ stroke: 'rgba(235,245,255,.62)', strokeWidth: 1, fillOpacity: 0.96 }}>
               {data.map((item) => <Cell key={item.clusterId} fill={clusterColor(item.clusterId)} />)}
             </Bar>

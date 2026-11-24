@@ -4,27 +4,30 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { IS_PREVIEW_MODE } from '../config/env';
 import { ConfirmModal } from '../components/admin/ConfirmModal';
+import { LanguageToggle } from '../components/LanguageToggle';
 import { PreviewBanner } from '../components/ui';
-
-const menu = [
-  { to: '/admin', label: 'Dashboard', icon: Gauge, end: true },
-  { to: '/admin/dataset', label: 'Dataset', icon: Database },
-  { to: '/admin/validasi', label: 'Validasi', icon: ClipboardCheck },
-  { to: '/admin/parameter', label: 'Pencarian Parameter', icon: SlidersHorizontal },
-  { to: '/admin/jobs', label: 'Manajemen Proses', icon: ListTodo },
-  { to: '/admin/dbscan-final', label: 'DBSCAN Final', icon: Atom },
-  { to: '/admin/riwayat-run', label: 'Riwayat Eksekusi', icon: FileClock },
-  { to: '/admin/audit-log', label: 'Log Aktivitas', icon: ShieldCheck },
-];
+import { useI18n } from '../i18n/LanguageContext';
 
 export function AdminLayout() {
   const { user, signOut } = useAuth();
+  const { t, tx } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
+
+  const menu = [
+    { to: '/admin', label: t.adminNav.dashboard, icon: Gauge, end: true },
+    { to: '/admin/dataset', label: t.adminNav.dataset, icon: Database },
+    { to: '/admin/validasi', label: t.adminNav.validation, icon: ClipboardCheck },
+    { to: '/admin/parameter', label: t.adminNav.parameter, icon: SlidersHorizontal },
+    { to: '/admin/jobs', label: t.adminNav.jobs, icon: ListTodo },
+    { to: '/admin/dbscan-final', label: t.adminNav.finalDbscan, icon: Atom },
+    { to: '/admin/riwayat-run', label: t.adminNav.runHistory, icon: FileClock },
+    { to: '/admin/audit-log', label: t.adminNav.auditLog, icon: ShieldCheck },
+  ];
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
@@ -64,7 +67,7 @@ export function AdminLayout() {
   };
 
   return <div className="admin-shell">
-    <a className="skip-link" href="#admin-main-content">Lewati ke konten utama</a>
+    <a className="skip-link" href="#admin-main-content">{t.nav.skipMain}</a>
     <div className="ambient ambient-one" /><div className="ambient ambient-two" />
     <PreviewBanner />
 
@@ -81,19 +84,19 @@ export function AdminLayout() {
       <div className="admin-sidebar-header">
         <NavLink to="/" className="brand-lockup sidebar-brand" onClick={() => setIsSidebarOpen(false)}>
           <span className="brand-mark"><Activity size={20} /></span>
-          <span><strong>SEISMAP</strong><small>PUSAT KENDALI</small></span>
+          <span><strong>SEISMAP</strong><small>{t.brand.adminSub}</small></span>
         </NavLink>
         <button
           type="button"
           className="admin-sidebar-close-btn lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
-          aria-label="Tutup navigasi"
+          aria-label={t.adminNav.closeNavAria}
         >
           <X size={18} />
         </button>
       </div>
-      <div className="sidebar-caption">RUANG KERJA</div>
-      <nav className="admin-menu" aria-label="Navigasi administrasi">
+      <div className="sidebar-caption">{t.adminNav.workspaceLabel}</div>
+      <nav className="admin-menu" aria-label={t.adminNav.navAria}>
         {menu.map((item) => (
           <NavLink
             key={item.to}
@@ -110,12 +113,12 @@ export function AdminLayout() {
         <div className="sidebar-status">
           <span className="status-pulse" />
           <div>
-            <strong>Status sistem</strong>
-            <small>{IS_PREVIEW_MODE ? 'Lingkungan pratinjau' : 'API terhubung'}</small>
+            <strong>{t.adminNav.systemStatus}</strong>
+            <small>{IS_PREVIEW_MODE ? t.adminNav.previewEnv : t.adminNav.apiConnected}</small>
           </div>
         </div>
         <NavLink to="/" className="back-public" onClick={() => setIsSidebarOpen(false)}>
-          <ArrowLeft size={15} />Kembali ke Publik
+          <ArrowLeft size={15} />{t.adminNav.backToPublic}
         </NavLink>
       </div>
     </aside>
@@ -127,20 +130,21 @@ export function AdminLayout() {
             type="button"
             className="admin-hamburger-btn lg:hidden"
             onClick={() => setIsSidebarOpen(true)}
-            aria-label="Buka navigasi menu admin"
+            aria-label={t.adminNav.openNavAria}
           >
             <Menu size={20} />
           </button>
           <div>
-            <span className="topbar-kicker">SEISMAP / ADMIN</span>
-            <strong>Ruang Kerja Penelitian</strong>
+            <span className="topbar-kicker">{t.adminNav.topbarKicker}</span>
+            <strong>{t.adminNav.topbarTitle}</strong>
           </div>
         </div>
         <div className="topbar-actions">
-          <span className="topbar-env"><i />{IS_PREVIEW_MODE ? 'PRATINJAU' : 'MODE API'}</span>
+          <LanguageToggle />
+          <span className="topbar-env"><i />{IS_PREVIEW_MODE ? t.adminNav.previewModeBadge : t.adminNav.apiModeBadge}</span>
           <div className="user-chip">
             <span className="avatar">{user?.username?.slice(0, 1).toUpperCase() || 'A'}</span>
-            <span><strong>{user?.username || (IS_PREVIEW_MODE ? 'Akses Pratinjau' : 'Administrator')}</strong><small>{user?.role || (IS_PREVIEW_MODE ? 'Pratinjau saja' : 'Admin')}</small></span>
+            <span><strong>{user?.username || (IS_PREVIEW_MODE ? t.adminNav.previewUser : t.adminNav.defaultAdmin)}</strong><small>{user?.role || (IS_PREVIEW_MODE ? t.adminNav.previewRole : t.adminNav.defaultRole)}</small></span>
             <ChevronDown size={14} />
           </div>
           {!IS_PREVIEW_MODE && user && (
@@ -148,8 +152,8 @@ export function AdminLayout() {
               type="button"
               className="icon-button"
               onClick={() => setShowLogoutConfirm(true)}
-              aria-label="Keluar"
-              title="Keluar"
+              aria-label={t.adminNav.logoutAria}
+              title={t.adminNav.logoutAria}
             >
               <LogOut size={17} />
             </button>
@@ -163,18 +167,25 @@ export function AdminLayout() {
 
     <ConfirmModal
       isOpen={showLogoutConfirm}
-      title="Konfirmasi Keluar"
+      title={t.adminNav.logoutModalTitle}
       message={
         <>
           <p>
-            Apakah Anda yakin ingin keluar dari ruang kerja administrator
-            {user?.username ? <> (<strong>{user.username}</strong>)</> : ''}?
+            {tx(
+              <>Apakah Anda yakin ingin keluar dari ruang kerja administrator{user?.username ? <> (<strong>{user.username}</strong>)</> : ''}?</>,
+              <>Are you sure you want to log out from the administrator workspace{user?.username ? <> (<strong>{user.username}</strong>)</> : ''}?</>,
+            )}
           </p>
-          <p>Sesi Anda akan diakhiri dan Anda perlu masuk kembali untuk mengakses halaman admin.</p>
+          <p>
+            {tx(
+              'Sesi Anda akan diakhiri dan Anda perlu masuk kembali untuk mengakses halaman admin.',
+              'Your session will end and you will need to sign in again to access admin pages.',
+            )}
+          </p>
         </>
       }
-      confirmLabel="Ya, Keluar"
-      cancelLabel="Batal"
+      confirmLabel={t.adminNav.logoutConfirm}
+      cancelLabel={t.adminNav.cancel}
       variant="danger"
       loading={logoutBusy}
       icon={<LogOut size={20} />}

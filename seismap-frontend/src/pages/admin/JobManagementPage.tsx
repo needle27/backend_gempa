@@ -9,6 +9,7 @@ import { usePipeline } from '../../context/PipelineContext';
 import { JobLifecycleControls } from '../../components/JobLifecycleControls';
 import { useJobPolling } from '../../hooks/useJobPolling';
 import { useResource } from '../../hooks/useResource';
+import { useI18n } from '../../i18n/LanguageContext';
 import {
   GlassCard, PageHeader, SimulationTag, StatePanel, StatusBadge, StatCard,
   formatDate, formatNumber,
@@ -28,6 +29,7 @@ function isActive(job: ProcessingJob): boolean {
 }
 
 export function JobManagementPage() {
+  const { lang, tx } = useI18n();
   const navigate = useNavigate();
   const { setSelectedDatasetId, setParameterJobId } = usePipeline();
   const datasets = useResource(() => getDatasets(1, 100), []);
@@ -164,113 +166,113 @@ export function JobManagementPage() {
 
   return <div className="page-stack">
     <PageHeader
-      eyebrow="ADMIN / PEMANTAUAN PROSES"
-      title="Manajemen Proses"
-      description="Pantau progres Pencarian Parameter dan DBSCAN Final, lalu buka kembali hasil eksperimen."
+      eyebrow={tx('ADMIN / PEMANTAUAN PROSES', 'ADMIN / JOB MONITORING')}
+      title={tx('Manajemen Proses', 'Job Management')}
+      description={tx('Pantau progres Pencarian Parameter dan DBSCAN Final, lalu buka kembali hasil eksperimen.', 'Monitor Parameter Search and Final DBSCAN progress, and revisit saved experiment outputs.')}
       action={<SimulationTag />}
     />
 
     <div className="stats-grid job-stats-grid">
-      <StatCard label="Total Proses" value={total === null || total === undefined ? '—' : formatNumber(total)} icon={<ListTodo size={17} />} tone="cyan" trend="Sesuai filter aktif" />
-      <StatCard label="Belum selesai" value={formatNumber(activeOnPage)} icon={<Activity size={17} />} tone="amber" trend="Termasuk proses yang dijeda" />
-      <StatCard label="Berhasil" value={formatNumber(successOnPage)} icon={<CheckCircle2 size={17} />} tone="teal" trend="Pada halaman ini" />
-      <StatCard label="Gagal" value={formatNumber(failedOnPage)} icon={<XCircle size={17} />} tone="violet" trend="Pada halaman ini" />
+      <StatCard label={tx('Total Proses', 'Total Jobs')} value={total === null || total === undefined ? '—' : formatNumber(total)} icon={<ListTodo size={17} />} tone="cyan" trend={tx('Sesuai filter aktif', 'Matching active filter')} />
+      <StatCard label={tx('Belum selesai', 'In Progress')} value={formatNumber(activeOnPage)} icon={<Activity size={17} />} tone="amber" trend={tx('Termasuk proses yang dijeda', 'Includes paused jobs')} />
+      <StatCard label={tx('Berhasil', 'Succeeded')} value={formatNumber(successOnPage)} icon={<CheckCircle2 size={17} />} tone="teal" trend={tx('Pada halaman ini', 'On this page')} />
+      <StatCard label={tx('Gagal', 'Failed')} value={formatNumber(failedOnPage)} icon={<XCircle size={17} />} tone="violet" trend={tx('Pada halaman ini', 'On this page')} />
     </div>
 
     <GlassCard
       className="job-filter-card"
-      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Filter size={16} /> Filter Proses</span>}
-      action={<button className="button button-secondary" type="button" onClick={resetFilters}>Reset Filter</button>}
+      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Filter size={16} /> {tx('Filter Proses', 'Filter Jobs')}</span>}
+      action={<button className="button button-secondary" type="button" onClick={resetFilters}>{tx('Reset Filter', 'Reset Filter')}</button>}
     >
       <form className="job-filter-grid" onSubmit={applyFilters}>
         <label>Status
           <select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value })}>
-            <option value="">Semua status</option>
-            <option value="QUEUED">Dalam antrean</option><option value="RUNNING">Sedang berjalan</option>
-            <option value="PAUSE_REQUESTED">Sedang menjeda</option><option value="PAUSED">Dijeda</option><option value="STOP_REQUESTED">Sedang menghentikan</option><option value="SUCCESS">Berhasil</option><option value="FAILED">Gagal</option><option value="CANCELLED">Dibatalkan</option>
+            <option value="">{tx('Semua status', 'All statuses')}</option>
+            <option value="QUEUED">{tx('Dalam antrean', 'Queued')}</option><option value="RUNNING">{tx('Sedang berjalan', 'Running')}</option>
+            <option value="PAUSE_REQUESTED">{tx('Sedang menjeda', 'Pause requested')}</option><option value="PAUSED">{tx('Dijeda', 'Paused')}</option><option value="STOP_REQUESTED">{tx('Sedang menghentikan', 'Stop requested')}</option><option value="SUCCESS">{tx('Berhasil', 'Success')}</option><option value="FAILED">{tx('Gagal', 'Failed')}</option><option value="CANCELLED">{tx('Dibatalkan', 'Cancelled')}</option>
           </select>
         </label>
-        <label>Jenis proses
+        <label>{tx('Jenis proses', 'Job type')}
           <select value={draft.job_type} onChange={(event) => setDraft({ ...draft, job_type: event.target.value })}>
-            <option value="">Semua jenis</option><option value="PARAMETER_SEARCH">Pencarian Parameter</option><option value="FINAL_CLUSTERING">Klasterisasi Final</option>
+            <option value="">{tx('Semua jenis', 'All types')}</option><option value="PARAMETER_SEARCH">{tx('Pencarian Parameter', 'Parameter Search')}</option><option value="FINAL_CLUSTERING">{tx('Klasterisasi Final', 'Final Clustering')}</option>
           </select>
         </label>
-        <label>ID Dataset
-          <input inputMode="numeric" value={draft.dataset_id} onChange={(event) => setDraft({ ...draft, dataset_id: event.target.value })} placeholder="Contoh: 1" />
+        <label>{tx('ID Dataset', 'Dataset ID')}
+          <input inputMode="numeric" value={draft.dataset_id} onChange={(event) => setDraft({ ...draft, dataset_id: event.target.value })} placeholder={tx('Contoh: 1', 'Example: 1')} />
         </label>
-        <label>Jumlah per halaman
+        <label>{tx('Jumlah per halaman', 'Rows per page')}
           <select value={filters.limit || DEFAULT_LIMIT} onChange={(event) => { const limit = Number(event.target.value); setPage(1); setFilters((current) => ({ ...current, page: 1, limit })); }}>
             <option value={10}>10</option><option value={20}>20</option><option value={50}>50</option>
           </select>
         </label>
         {filterError && <div className="form-error job-filter-wide">{filterError}</div>}
         <div className="job-filter-actions job-filter-wide">
-          <button className="button button-primary" type="submit"><Search size={15} /> Terapkan filter</button>
-          <button className="button button-secondary" type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}><RefreshCw size={14} /> Muat ulang</button>
+          <button className="button button-primary" type="submit"><Search size={15} /> {tx('Terapkan filter', 'Apply filter')}</button>
+          <button className="button button-secondary" type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}><RefreshCw size={14} /> {tx('Muat ulang', 'Reload')}</button>
         </div>
       </form>
     </GlassCard>
 
-    <GlassCard title="Daftar Proses">
-      {loading ? <StatePanel type="loading" title="Memuat daftar proses" message="Mengambil proses dan status terbaru." />
-        : error ? <StatePanel type="error" title="Daftar proses belum tersedia" message={error} action={<button className="button button-secondary" onClick={() => setRefreshKey((value) => value + 1)}>Coba lagi</button>} />
-          : !jobs?.items.length ? <StatePanel type="empty" title="Proses tidak ditemukan" message="Tidak ada proses yang sesuai dengan filter. Hapus filter atau jalankan proses melalui halaman Pencarian Parameter atau DBSCAN Final." />
+    <GlassCard title={tx('Daftar Proses', 'Job List')}>
+      {loading ? <StatePanel type="loading" title={tx('Memuat daftar proses', 'Loading jobs')} message={tx('Mengambil proses dan status terbaru.', 'Fetching jobs and latest statuses.')} />
+        : error ? <StatePanel type="error" title={tx('Daftar proses belum tersedia', 'Jobs unavailable')} message={error} action={<button className="button button-secondary" onClick={() => setRefreshKey((value) => value + 1)}>{tx('Coba lagi', 'Try again')}</button>} />
+          : !jobs?.items.length ? <StatePanel type="empty" title={tx('Proses tidak ditemukan', 'No jobs found')} message={tx('Tidak ada proses yang sesuai dengan filter. Hapus filter atau jalankan proses melalui halaman Pencarian Parameter atau DBSCAN Final.', 'No jobs match your filters. Reset filters or launch a run from Parameter Search or Final DBSCAN.')} />
             : <>
-              <div className="job-list-meta"><span><strong>{total === null ? formatNumber(jobs.items.length) : formatNumber(total)}</strong> proses sesuai</span><span>Halaman {page}{totalPages ? ` dari ${totalPages}` : ''} · {formatNumber(jobs.items.length)} ditampilkan</span></div>
-              <div className="table-scroll"><table className="data-table job-table"><thead><tr><th>Proses</th><th>Jenis proses</th><th>Dataset</th><th>Kemajuan</th><th>Status</th><th>Dibuat</th><th /></tr></thead><tbody>
+              <div className="job-list-meta"><span><strong>{total === null ? formatNumber(jobs.items.length) : formatNumber(total)}</strong> {tx('proses sesuai', 'matching jobs')}</span><span>{tx('Halaman', 'Page')} {page}{totalPages ? ` ${tx('dari', 'of')} ${totalPages}` : ''} · {formatNumber(jobs.items.length)} {tx('ditampilkan', 'shown')}</span></div>
+              <div className="table-scroll"><table className="data-table job-table"><thead><tr><th>{tx('Proses', 'Job')}</th><th>{tx('Jenis proses', 'Job Type')}</th><th>Dataset</th><th>{tx('Kemajuan', 'Progress')}</th><th>Status</th><th>{tx('Dibuat', 'Created At')}</th><th /></tr></thead><tbody>
                 {jobs.items.map((job) => <tr key={job.id} className={selectedJobId === job.id ? 'job-row-selected' : ''}>
-                  <td><strong>#{job.id}</strong><small className="table-sub">{job.parent_job_id ? `Lanjutan dari proses #${job.parent_job_id}` : job.run_id ? `Eksekusi #${job.run_id}` : `Proses #${job.id}`}</small></td>
-                  <td>{jobTypeLabel(job.job_type)}</td>
+                  <td><strong>#{job.id}</strong><small className="table-sub">{job.parent_job_id ? tx(`Lanjutan dari proses #${job.parent_job_id}`, `Restarted from job #${job.parent_job_id}`) : job.run_id ? `${tx('Eksekusi', 'Run')} #${job.run_id}` : `${tx('Proses', 'Job')} #${job.id}`}</small></td>
+                  <td>{jobTypeLabel(job.job_type, lang)}</td>
                   <td><strong>{datasetNames.get(job.dataset_id) || `Dataset #${job.dataset_id}`}</strong><small className="table-sub">ID {job.dataset_id}</small></td>
                   <td><div className="job-table-progress"><span><i style={{ width: `${Math.max(0, Math.min(100, job.progress || 0))}%` }} /></span><small>{formatNumber(job.progress || 0)}%</small></div></td>
                   <td><StatusBadge status={job.status} /></td>
                   <td>{formatDate(job.created_at)}</td>
-                  <td><button className="text-button" type="button" onClick={() => selectJob(job.id)}>Rincian <ArrowRight size={13} /></button></td>
+                  <td><button className="text-button" type="button" onClick={() => selectJob(job.id)}>{tx('Rincian', 'Details')} <ArrowRight size={13} /></button></td>
                 </tr>)}
               </tbody></table></div>
               <div className="audit-pagination job-pagination">
-                <span>Menampilkan {formatNumber((jobs.offset || 0) + 1)}–{formatNumber((jobs.offset || 0) + jobs.items.length)}{total !== null ? ` dari ${formatNumber(total)}` : ''}</span>
+                <span>{tx('Menampilkan', 'Showing')} {formatNumber((jobs.offset || 0) + 1)}–{formatNumber((jobs.offset || 0) + jobs.items.length)}{total !== null ? ` ${tx('dari', 'of')} ${formatNumber(total)}` : ''}</span>
                 <div>
-                  <button className="button button-secondary" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))}>Sebelumnya</button>
-                  <button className="button button-secondary" disabled={!jobs.hasMore || loading} onClick={() => setPage((value) => value + 1)}>Berikutnya</button>
+                  <button className="button button-secondary" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))}>{tx('Sebelumnya', 'Previous')}</button>
+                  <button className="button button-secondary" disabled={!jobs.hasMore || loading} onClick={() => setPage((value) => value + 1)}>{tx('Berikutnya', 'Next')}</button>
                 </div>
               </div>
             </>}
     </GlassCard>
 
-    {selectedJobId !== null && <GlassCard title={`Rincian Proses #${selectedJobId}`} subtitle="Informasi status proses yang dipilih." action={<button className="button button-ghost" type="button" onClick={() => setSelectedJobId(null)}>Tutup</button>}>
-      {selectedJobState.error ? <StatePanel type="error" title="Rincian proses gagal dimuat" message={selectedJobState.error} />
-        : !selectedJob ? <StatePanel type="loading" title="Memuat rincian proses" message="Mengambil status, kemajuan, dan informasi proses." />
+    {selectedJobId !== null && <GlassCard title={tx(`Rincian Proses #${selectedJobId}`, `Job #${selectedJobId} Details`)} subtitle={tx('Informasi status proses yang dipilih.', 'Status summary for the selected job.')} action={<button className="button button-ghost" type="button" onClick={() => setSelectedJobId(null)}>{tx('Tutup', 'Close')}</button>}>
+      {selectedJobState.error ? <StatePanel type="error" title={tx('Rincian proses gagal dimuat', 'Failed to load job details')} message={selectedJobState.error} />
+        : !selectedJob ? <StatePanel type="loading" title={tx('Memuat rincian proses', 'Loading job details')} message={tx('Mengambil status, kemajuan, dan informasi proses.', 'Fetching status, progress, and job metadata.')} />
           : <div className="job-detail-layout">
             <div className="job-detail-main">
-              <div className="job-detail-heading"><div><span className="eyebrow">{jobTypeLabel(selectedJob.job_type)}</span><h3>Proses #{selectedJob.id}</h3></div><StatusBadge status={selectedJob.status} /></div>
-              <div className="job-detail-progress"><div className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, selectedJob.progress || 0))}%` }} /></div><div className="progress-label"><strong>{formatNumber(selectedJob.progress || 0)}%</strong><span>{selectedJob.current_step ? processStepLabel(selectedJob.current_step) : selectedJob.message || 'Menunggu pembaruan status'}</span></div></div>
-              {selectedJob.message && <p className="job-detail-message">{friendlyErrorMessage(selectedJob.message)}</p>}
-              {selectedJob.error_code && <div className="form-error">{friendlyErrorMessage(selectedJob.error_code)}</div>}
+              <div className="job-detail-heading"><div><span className="eyebrow">{jobTypeLabel(selectedJob.job_type, lang)}</span><h3>{tx('Proses', 'Job')} #{selectedJob.id}</h3></div><StatusBadge status={selectedJob.status} /></div>
+              <div className="job-detail-progress"><div className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, selectedJob.progress || 0))}%` }} /></div><div className="progress-label"><strong>{formatNumber(selectedJob.progress || 0)}%</strong><span>{selectedJob.current_step ? processStepLabel(selectedJob.current_step, lang) : selectedJob.message || tx('Menunggu pembaruan status', 'Waiting for status update')}</span></div></div>
+              {selectedJob.message && <p className="job-detail-message">{friendlyErrorMessage(selectedJob.message, undefined, undefined, lang)}</p>}
+              {selectedJob.error_code && <div className="form-error">{friendlyErrorMessage(selectedJob.error_code, undefined, undefined, lang)}</div>}
               <div className="job-detail-fields">
                 <div><span>Dataset</span><strong>{datasetNames.get(selectedJob.dataset_id) || `#${selectedJob.dataset_id}`}</strong></div>
-                <div><span>ID Eksekusi</span><strong>{selectedJob.run_id ? `#${selectedJob.run_id}` : '—'}</strong></div>
-                <div><span>Dibuat</span><strong>{formatDate(selectedJob.created_at)}</strong></div>
-                <div><span>Dimulai</span><strong>{formatDate(selectedJob.started_at)}</strong></div>
-                <div><span>Selesai</span><strong>{formatDate(selectedJob.finished_at)}</strong></div>
+                <div><span>{tx('ID Eksekusi', 'Run ID')}</span><strong>{selectedJob.run_id ? `#${selectedJob.run_id}` : '—'}</strong></div>
+                <div><span>{tx('Dibuat', 'Created')}</span><strong>{formatDate(selectedJob.created_at)}</strong></div>
+                <div><span>{tx('Dimulai', 'Started')}</span><strong>{formatDate(selectedJob.started_at)}</strong></div>
+                <div><span>{tx('Selesai', 'Finished')}</span><strong>{formatDate(selectedJob.finished_at)}</strong></div>
                 {selectedJob.job_type === 'PARAMETER_SEARCH' && selectedJob.recommendation_status && (
                   <div>
-                    <span>Status Rekomendasi</span>
+                    <span>{tx('Status Rekomendasi', 'Recommendation Status')}</span>
                     <strong><StatusBadge status={selectedJob.recommendation_status} /></strong>
                   </div>
                 )}
                 {selectedJob.job_type === 'PARAMETER_SEARCH' && selectedJob.selected_experiment && (
                   <div>
-                    <span>Kandidat Rekomendasi</span>
+                    <span>{tx('Kandidat Rekomendasi', 'Recommended Candidate')}</span>
                     <strong>
-                      Eksperimen #{selectedJob.selected_experiment.id} (ε {formatNumber(selectedJob.selected_experiment.eps_km, 2)} km, MinPts {selectedJob.selected_experiment.min_samples})
+                      {tx('Eksperimen', 'Experiment')} #{selectedJob.selected_experiment.id} (ε {formatNumber(selectedJob.selected_experiment.eps_km, 2)} km, MinPts {selectedJob.selected_experiment.min_samples})
                     </strong>
                   </div>
                 )}
-                {selectedJob.parent_job_id && <div><span>Proses sebelumnya</span><strong>#{selectedJob.parent_job_id}</strong></div>}
-                {selectedJob.pause_requested_at && <div><span>Permintaan jeda</span><strong>{formatDate(selectedJob.pause_requested_at)}</strong></div>}
-                {selectedJob.paused_at && <div><span>Terakhir dijeda</span><strong>{formatDate(selectedJob.paused_at)}</strong></div>}
-                {selectedJob.stop_requested_at && <div><span>Permintaan penghentian</span><strong>{formatDate(selectedJob.stop_requested_at)}</strong></div>}
+                {selectedJob.parent_job_id && <div><span>{tx('Proses sebelumnya', 'Parent Job')}</span><strong>#{selectedJob.parent_job_id}</strong></div>}
+                {selectedJob.pause_requested_at && <div><span>{tx('Permintaan jeda', 'Pause Requested')}</span><strong>{formatDate(selectedJob.pause_requested_at)}</strong></div>}
+                {selectedJob.paused_at && <div><span>{tx('Terakhir dijeda', 'Last Paused')}</span><strong>{formatDate(selectedJob.paused_at)}</strong></div>}
+                {selectedJob.stop_requested_at && <div><span>{tx('Permintaan penghentian', 'Stop Requested')}</span><strong>{formatDate(selectedJob.stop_requested_at)}</strong></div>}
               </div>
               <JobLifecycleControls
                 job={selectedJob}
@@ -282,15 +284,15 @@ export function JobManagementPage() {
                   setRefreshKey((value) => value + 1);
                 }}
               />
-              {selectedJob.status === 'SUCCESS' && selectedJob.job_type === 'FINAL_CLUSTERING' && selectedJob.run_id && <button className="button button-secondary" type="button" onClick={() => navigate('/admin/riwayat-run')}><Database size={14} /> Buka Riwayat Eksekusi</button>}
+              {selectedJob.status === 'SUCCESS' && selectedJob.job_type === 'FINAL_CLUSTERING' && selectedJob.run_id && <button className="button button-secondary" type="button" onClick={() => navigate('/admin/riwayat-run')}><Database size={14} /> {tx('Buka Riwayat Eksekusi', 'Open Execution History')}</button>}
             </div>
             {selectedJob.job_type === 'PARAMETER_SEARCH' && <div className="job-experiment-panel">
-              {selectedJob.status === 'SUCCESS' && <button className="button button-secondary job-open-elbow" type="button" onClick={() => useJobForElbow(selectedJob)}><BarChart3 size={14} /> Buka Analisis K-Distance <ArrowRight size={13} /></button>}
-              <div className="job-experiment-heading"><div><strong>Hasil eksperimen</strong><small>Hasil pencarian parameter untuk proses ini</small></div><span>{experiments.length} kandidat</span></div>
-              {selectedJob.status !== 'SUCCESS' ? <StatePanel type="info" title="Menunggu proses selesai" message="Hasil eksperimen tersedia setelah proses berhasil." />
-                : experimentsLoading ? <StatePanel type="loading" title="Memuat eksperimen" message="Mengambil seluruh kandidat dari proses ini." />
-                  : experimentsError ? <StatePanel type="error" title="Hasil eksperimen gagal dimuat" message={experimentsError} />
-                    : !experiments.length ? <StatePanel type="empty" title="Belum ada hasil eksperimen" message="Belum ada kandidat yang dikembalikan untuk proses ini." />
+              {selectedJob.status === 'SUCCESS' && <button className="button button-secondary job-open-elbow" type="button" onClick={() => useJobForElbow(selectedJob)}><BarChart3 size={14} /> {tx('Buka Analisis K-Distance', 'Open k-Distance Analysis')} <ArrowRight size={13} /></button>}
+              <div className="job-experiment-heading"><div><strong>{tx('Hasil eksperimen', 'Experiment Results')}</strong><small>{tx('Hasil pencarian parameter untuk proses ini', 'Parameter search evaluations for this job')}</small></div><span>{experiments.length} {tx('kandidat', 'candidates')}</span></div>
+              {selectedJob.status !== 'SUCCESS' ? <StatePanel type="info" title={tx('Menunggu proses selesai', 'Waiting for completion')} message={tx('Hasil eksperimen tersedia setelah proses berhasil.', 'Experiment results become available after job completion.')} />
+                : experimentsLoading ? <StatePanel type="loading" title={tx('Memuat eksperimen', 'Loading experiments')} message={tx('Mengambil seluruh kandidat dari proses ini.', 'Fetching candidate experiments for this job.')} />
+                  : experimentsError ? <StatePanel type="error" title={tx('Hasil eksperimen gagal dimuat', 'Failed to load experiments')} message={experimentsError} />
+                    : !experiments.length ? <StatePanel type="empty" title={tx('Belum ada hasil eksperimen', 'No experiments found')} message={tx('Belum ada kandidat yang dikembalikan untuk proses ini.', 'No candidate experiments were returned for this job.')} />
                       : <>
                         <div className="table-scroll">
                           <table className="data-table compact-job-experiments">
@@ -299,13 +301,13 @@ export function JobManagementPage() {
                                 <th>ID</th>
                                 <th>ε km</th>
                                 <th>MinPts</th>
-                                <th>Klaster</th>
+                                <th>{tx('Klaster', 'Clusters')}</th>
                                 <th>Noise (%)</th>
-                                <th>Dominasi</th>
+                                <th>{tx('Dominasi', 'Dominance')}</th>
                                 <th>Silhouette</th>
-                                <th>Stabilitas</th>
-                                <th>Skor Rekom.</th>
-                                <th>Validitas</th>
+                                <th>{tx('Stabilitas', 'Stability')}</th>
+                                <th>{tx('Skor Rekom.', 'Rec. Score')}</th>
+                                <th>{tx('Validitas', 'Validity')}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -330,7 +332,7 @@ export function JobManagementPage() {
                                     <span>{formatRatioPercent(experiment.largest_cluster_ratio)}</span>
                                     {experiment.max_cluster_size != null && (
                                       <small className="table-sub" style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                                        maks {formatNumber(experiment.max_cluster_size)}
+                                        {tx('maks', 'max')} {formatNumber(experiment.max_cluster_size)}
                                       </small>
                                     )}
                                   </td>
@@ -342,8 +344,8 @@ export function JobManagementPage() {
                                   <td className="invalid-cell">
                                     <StatusBadge status={experiment.invalid_reasons === null ? 'HISTORIS' : experiment.is_valid ? 'VALID' : 'INVALID'} />
                                     {experiment.invalid_reasons && experiment.invalid_reasons.length > 0 && (
-                                      <small className="invalid-reasons-text" title={experiment.invalid_reasons.map((r) => formatInvalidReason(r)).join('; ')}>
-                                        {experiment.invalid_reasons.map((r) => formatInvalidReason(r)).join(', ')}
+                                      <small className="invalid-reasons-text" title={experiment.invalid_reasons.map((r) => formatInvalidReason(r, undefined, lang)).join('; ')}>
+                                        {experiment.invalid_reasons.map((r) => formatInvalidReason(r, undefined, lang)).join(', ')}
                                       </small>
                                     )}
                                   </td>
@@ -352,8 +354,8 @@ export function JobManagementPage() {
                             </tbody>
                           </table>
                         </div>
-                        {experiments.some((experiment) => experiment.is_valid) && <button className="button button-primary job-use-experiments" type="button" onClick={() => useJobForFinal(selectedJob)}><Workflow size={15} /> Pilih eksperimen untuk DBSCAN Final <ArrowRight size={14} /></button>}
-                        <p className="job-experiment-note">Hasil eksperimen tetap tersimpan. Tombol ini meneruskan dataset dan proses terpilih ke halaman DBSCAN Final tanpa mengulang pencarian.</p>
+                        {experiments.some((experiment) => experiment.is_valid) && <button className="button button-primary job-use-experiments" type="button" onClick={() => useJobForFinal(selectedJob)}><Workflow size={15} /> {tx('Pilih eksperimen untuk DBSCAN Final', 'Select experiment for Final DBSCAN')} <ArrowRight size={14} /></button>}
+                        <p className="job-experiment-note">{tx('Hasil eksperimen tetap tersimpan. Tombol ini meneruskan dataset dan proses terpilih ke halaman DBSCAN Final tanpa mengulang pencarian.', 'Experiment evaluations are saved. This button carries the dataset and selected job to Final DBSCAN without rerunning search.')}</p>
                       </>}
             </div>}
           </div>}
