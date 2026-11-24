@@ -12,6 +12,7 @@ import type { ElbowCurveSummary, ElbowDetailRecord, ElbowSummary } from '../api/
 import type { ParameterExperiment, ParameterSearchMetadata } from '../types/domain';
 import { resolveExperimentProvenance } from '../utils/parameterSearchMetadata';
 import { IS_PREVIEW_MODE } from '../config/env';
+import { invalidateCachePrefix } from '../utils/resourceCache';
 import { GlassCard, StatePanel, StatusBadge, formatNumber } from './ui';
 import { ApiError } from '../types/api';
 
@@ -272,9 +273,20 @@ export function ElbowAnalysisPanel({
 
   const retrySummary = () => {
     if (!jobId) return;
+    invalidateCachePrefix('admin', `elbow:summary:${jobId}`);
+    summary?.curves.forEach((curve) => {
+      if (curve.detail_url) {
+        try {
+          const parsed = new URL(curve.detail_url, window.location.origin);
+          invalidateCachePrefix('admin', `elbow:detail:${parsed.pathname}${parsed.search}`);
+        } catch {
+          invalidateCachePrefix('admin', `elbow:detail:${curve.detail_url}`);
+        }
+      }
+    });
     setSummaryError(null);
     setSummaryLoading(true);
-    getElbowSummary(jobId).then((result) => {
+    getElbowSummary(jobId, { forceRefresh: true }).then((result) => {
       setSummary(result);
       setSelectedMinSamples(result.curves[0]?.min_samples ?? null);
     }).catch((reason: unknown) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, Clock3, Database, ExternalLink,
@@ -77,6 +77,7 @@ export function FinalDbscanPage() {
   const [jobsHasMore, setJobsHasMore] = useState(false);
   const [jobsTotal, setJobsTotal] = useState<number | null>(null);
   const [jobsReloadKey, setJobsReloadKey] = useState(0);
+  const prevJobsReloadKeyRef = useRef(0);
   const [sourceJob, setSourceJob] = useState<ProcessingJob | null>(null);
   const [experiments, setExperiments] = useState<ParameterExperiment[]>([]);
   const [sourceLoading, setSourceLoading] = useState(false);
@@ -116,6 +117,9 @@ export function FinalDbscanPage() {
       return () => { active = false; };
     }
 
+    const isManualJobsReload = jobsReloadKey !== prevJobsReloadKeyRef.current;
+    prevJobsReloadKeyRef.current = jobsReloadKey;
+
     setJobsLoading(true);
     setJobsError(null);
 
@@ -125,6 +129,9 @@ export function FinalDbscanPage() {
       status: 'SUCCESS',
       job_type: 'PARAMETER_SEARCH',
       dataset_id: effectiveDatasetId,
+    }, {
+      useCache: true,
+      forceRefresh: isManualJobsReload,
     }).then((result) => {
       if (!active) return;
       const matchingJobs = result.items.filter((job) =>
@@ -172,7 +179,7 @@ export function FinalDbscanPage() {
     setSourceLoading(true);
     const loadSource = async () => {
       try {
-        const job = await getJob(effectiveParameterJobId);
+        const job = await getJob(effectiveParameterJobId, { cacheTerminal: true });
         if (!active) return;
         setSourceJob(job);
 

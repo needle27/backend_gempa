@@ -88,9 +88,10 @@ export function ClusterMapPage() {
     const forceFetch = reloadNonce > 0;
 
     async function fetchFreshFromServer(existingCacheKey: string | null) {
+      const bypassCache = existingCacheKey === null && forceFetch;
       const [nextMetadata, nextSummary] = await Promise.all([
-        getPublicMetadata(),
-        getPublicSummary(),
+        getPublicMetadata({ forceRefresh: bypassCache }),
+        getPublicSummary({ forceRefresh: bypassCache }),
       ]);
       if (!active) return;
 

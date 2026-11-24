@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { getJob } from '../api/services';
 import type { ProcessingJob } from '../types/domain';
+import { invalidateCacheKey, invalidateCachePrefix } from '../utils/resourceCache';
 
 const POLLING_STATUSES = new Set(['QUEUED', 'RUNNING', 'PAUSE_REQUESTED', 'STOP_REQUESTED']);
+const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED', 'CANCELLED']);
 const POLLING_INTERVAL_MS = 3000;
 
 export function useJobPolling(jobId: number | null) {
@@ -10,11 +12,13 @@ export function useJobPolling(jobId: number | null) {
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const forcePollRemaining = useRef(0);
+  const sawNonTerminalRef = useRef(false);
 
   useEffect(() => {
     setJob(null);
     setError(null);
     forcePollRemaining.current = 0;
+    sawNonTerminalRef.current = false;
   }, [jobId]);
 
   useEffect(() => {
@@ -34,6 +38,16 @@ export function useJobPolling(jobId: number | null) {
       try {
         const result = await getJob(jobId);
         if (!active) return;
+        if (!TERMINAL_STATUSES.has(result.status)) {
+          sawNonTerminalRef.current = true;
+        } else if (sawNonTerminalRef.current) {
+          sawNonTerminalRef.current = false;
+          invalidateCacheKey('admin', `job:${jobId}`);
+          invalidateCachePrefix('admin', 'jobs:');
+          invalidateCachePrefix('admin', 'datasets:');
+          invalidateCachePrefix('admin', 'dataset:detail:');
+          invalidateCachePrefix('admin', 'runs:');
+        }
         setJob(result);
         setError(null);
         if (result.status === 'PAUSED' && forcePollRemaining.current > 0) {

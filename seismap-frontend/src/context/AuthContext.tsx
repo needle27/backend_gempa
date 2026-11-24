@@ -4,6 +4,7 @@ import type { AdminUser } from '../types/domain';
 import { IS_PREVIEW_MODE } from '../config/env';
 import { hasCsrfCookie, clearAuthTokens } from '../api/client';
 import { getCurrentUser, login as loginRequest, logout as logoutRequest, refreshSession } from '../api/auth';
+import { clearNamespaceCache } from '../utils/resourceCache';
 
 interface AuthContextValue {
   user: AdminUser | null;
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError && error.status === 401) {
         // Jangan refresh sesi anonim tanpa CSRF refresh cookie.
         if (!hasCsrfCookie('refresh')) {
+          clearNamespaceCache('admin');
           setUser(null);
           return;
         }
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(await getCurrentUser());
           return;
         } catch {
+          clearNamespaceCache('admin');
           setUser(null);
           return;
         }
@@ -50,7 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void reloadUser();
-    const expire = () => setUser(null);
+    const expire = () => {
+      clearNamespaceCache('admin');
+      setUser(null);
+    };
     window.addEventListener('seismap:auth-expired', expire);
     return () => window.removeEventListener('seismap:auth-expired', expire);
   }, [reloadUser]);
@@ -67,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await logoutRequest();
     } catch {}
     clearAuthTokens();
+    clearNamespaceCache('admin');
     setUser(null);
   }, []);
 
