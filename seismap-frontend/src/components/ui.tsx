@@ -15,10 +15,53 @@ export function StatCard({ label, value, suffix, icon, trend, tone = 'cyan' }: {
   return <div className={`stat-card stat-${tone}`}><div className="stat-top"><span>{label}</span><span className="stat-icon">{icon}</span></div><div className="stat-value">{value}{suffix && <small>{suffix}</small>}</div>{trend && <div className="stat-foot">{trend}</div>}</div>;
 }
 
-export function StatePanel({ type, title, message, action }: { type: 'loading' | 'empty' | 'error' | 'info'; title: string; message: string; action?: ReactNode }) {
+export function StatePanel({
+  type,
+  title,
+  message,
+  action,
+  progress,
+}: {
+  type: 'loading' | 'empty' | 'error' | 'info';
+  title: string;
+  message: string;
+  action?: ReactNode;
+  progress?: number | null;
+}) {
   const Icon = type === 'loading' ? LoaderCircle : type === 'error' ? AlertCircle : type === 'empty' ? Database : Sparkles;
   const visibleMessage = type === 'error' ? friendlyErrorMessage(message) : message;
-  return <div className={`state-panel state-${type}`}><span className="state-icon">{type === 'loading' ? <Icon className="spin" size={20} /> : <Icon size={20} />}</span><div><strong>{title}</strong><p>{visibleMessage}</p>{action && <div className="state-action">{action}</div>}</div></div>;
+  const hasProgress = type === 'loading' && typeof progress === 'number' && Number.isFinite(progress);
+  const clampedProgress = hasProgress ? Math.max(0, Math.min(100, Math.round(progress))) : 0;
+
+  return (
+    <div className={`state-panel state-${type}`}>
+      <span className="state-icon">
+        {type === 'loading' ? <Icon className="spin" size={20} /> : <Icon size={20} />}
+      </span>
+      <div className="state-panel-body">
+        <strong>{title}</strong>
+        <p>{visibleMessage}</p>
+        {hasProgress && (
+          <div className="state-progress" aria-live="polite">
+            <div
+              className="state-progress-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={clampedProgress}
+            >
+              <span style={{ width: `${clampedProgress}%` }} />
+            </div>
+            <div className="state-progress-meta">
+              <span>Memproses sebaran titik spasial</span>
+              <strong className="tabular-nums">{formatNumber(clampedProgress)}%</strong>
+            </div>
+          </div>
+        )}
+        {action && <div className="state-action">{action}</div>}
+      </div>
+    </div>
+  );
 }
 
 export function StatusBadge({ status }: { status: string }) {

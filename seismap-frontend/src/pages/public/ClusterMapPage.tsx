@@ -3,71 +3,241 @@ import { ChevronDown, Compass, Crosshair, Filter, Info, LocateFixed, MapPinned, 
 import { getPublicMetadata, getPublicSummary, getResearchEarthquakes } from '../../api/services';
 import { ClusterMap } from '../../components/ClusterMap';
 import { PageHeader, SimulationTag, StatePanel, formatNumber } from '../../components/ui';
-import { useResource } from '../../hooks/useResource';
 import { formatDatasetYearRange, statusLabel } from '../../utils/presentation';
 import { clusterColor, NOISE_COLOR } from '../../utils/clusterColors';
-import type { ResearchEarthquake } from '../../types/domain';
+import {
+  buildMapCacheKey,
+  getMemoryCachedMapDataset,
+  markDatasetValidated,
+  persistMapDataset,
+  readPersistedMapDataset,
+  shouldRevalidateCachedDataset,
+} from '../../utils/mapDataCache';
+import type { PublicMetadata, PublicSummary, ResearchEarthquake } from '../../types/domain';
 
 const MAP_API_PAGE_SIZE = 5000;
 const MAP_API_CONCURRENCY = 2;
 
+type MapLoadState = {
+  metadata: PublicMetadata | null;
+  summary: PublicSummary | null;
+  points: ResearchEarthquake[] | null;
+  loading: boolean;
+  progress: number | null;
+  error: string | null;
+};
+
 async function getAllResearchEarthquakes(
   totalPoints: number,
-  onProgress?: (done: number, total: number) => void,
+  onProgress?: (progressPercent: number) => void,
 ): Promise<ResearchEarthquake[]> {
   const totalPages = Math.max(1, Math.ceil(totalPoints / MAP_API_PAGE_SIZE));
   const pageResults: ResearchEarthquake[][] = Array.from({ length: totalPages }, () => []);
   let nextPageIndex = 0;
   let completedPages = 0;
 
-  onProgress?.(0, totalPages);
+  onProgress?.(10);
 
   async function worker(): Promise<void> {
     while (nextPageIndex < totalPages) {
       const currentIndex = nextPageIndex++;
       pageResults[currentIndex] = await getResearchEarthquakes(currentIndex + 1, MAP_API_PAGE_SIZE);
       completedPages += 1;
-      onProgress?.(completedPages, totalPages);
+      const pct = 10 + Math.round((completedPages / totalPages) * 88);
+      onProgress?.(Math.min(98, pct));
     }
   }
 
   await Promise.all(
     Array.from({ length: Math.min(MAP_API_CONCURRENCY, totalPages) }, () => worker()),
   );
+  onProgress?.(100);
   return pageResults.flat();
 }
 
 export function ClusterMapPage() {
-  const metadata = useResource(getPublicMetadata, []);
-  const summary = useResource(getPublicSummary, []);
+  const [mapState, setMapState] = useState<MapLoadState>(() => {
+    const mem = getMemoryCachedMapDataset();
+    if (mem) {
+      return {
+        metadata: mem.metadata,
+        summary: mem.summary,
+        points: mem.points,
+        loading: false,
+        progress: null,
+        error: null,
+      };
+    }
+    return {
+      metadata: null,
+      summary: null,
+      points: null,
+      loading: true,
+      progress: null,
+      error: null,
+    };
+  });
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [clusterFilter, setClusterFilter] = useState('all');
   const [noiseOnly, setNoiseOnly] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
-  const [loadProgress, setLoadProgress] = useState({ done: 0, total: 0 });
 
-  const totalPoints = summary.data?.total_points ?? 0;
-  const canLoadPoints = Boolean(metadata.data?.run && summary.data && totalPoints > 0);
-  const points = useResource(
-    () => canLoadPoints
-      ? getAllResearchEarthquakes(totalPoints, (done, total) => setLoadProgress({ done, total }))
-      : Promise.resolve([]),
-    [metadata.data?.run?.id, summary.data?.total_points],
-  );
-  const filtered = useMemo(() => (points.data || []).filter((point) => {
+  useEffect(() => {
+    let active = true;
+    const forceFetch = reloadNonce > 0;
+
+    async function fetchFreshFromServer(existingCacheKey: string | null) {
+      const [nextMetadata, nextSummary] = await Promise.all([
+        getPublicMetadata(),
+        getPublicSummary(),
+      ]);
+      if (!active) return;
+
+      if (!nextMetadata.run) {
+        setMapState({
+          metadata: nextMetadata,
+          summary: nextSummary,
+          points: [],
+          loading: false,
+          progress: null,
+          error: null,
+        });
+        return;
+      }
+
+      const nextKey = nextSummary ? buildMapCacheKey(nextMetadata, nextSummary) : null;
+      if (existingCacheKey && nextKey && existingCacheKey === nextKey) {
+        markDatasetValidated();
+        return;
+      }
+
+      const totalPoints = nextSummary?.total_points ?? 0;
+      if (!nextSummary || totalPoints <= 0) {
+        setMapState({
+          metadata: nextMetadata,
+          summary: nextSummary,
+          points: [],
+          loading: false,
+          progress: null,
+          error: null,
+        });
+        return;
+      }
+
+      setMapState((prev) => ({
+        ...prev,
+        metadata: nextMetadata,
+        summary: nextSummary,
+        loading: true,
+        progress: 10,
+        error: null,
+      }));
+
+      const fetchedPoints = await getAllResearchEarthquakes(totalPoints, (progress) => {
+        if (active) {
+          setMapState((prev) => (prev.loading ? { ...prev, progress } : prev));
+        }
+      });
+      if (!active) return;
+
+      if (nextKey && fetchedPoints.length > 0) {
+        void persistMapDataset({
+          cacheKey: nextKey,
+          runId: nextMetadata.run.id,
+          activatedAt: nextMetadata.run.activated_at ?? null,
+          totalPoints,
+          metadata: nextMetadata,
+          summary: nextSummary,
+          points: fetchedPoints,
+        });
+      }
+
+      setMapState({
+        metadata: nextMetadata,
+        summary: nextSummary,
+        points: fetchedPoints,
+        loading: false,
+        progress: null,
+        error: null,
+      });
+    }
+
+    async function load() {
+      try {
+        if (!forceFetch) {
+          const mem = getMemoryCachedMapDataset();
+          if (mem) {
+            if (!shouldRevalidateCachedDataset()) {
+              return;
+            }
+            try {
+              await fetchFreshFromServer(mem.cacheKey);
+            } catch {
+              // Pertahankan data cache aktif bila validasi latar belakang gagal sementara.
+            }
+            return;
+          }
+
+          const persisted = await readPersistedMapDataset();
+          if (!active) return;
+          if (persisted) {
+            setMapState({
+              metadata: persisted.metadata,
+              summary: persisted.summary,
+              points: persisted.points,
+              loading: false,
+              progress: null,
+              error: null,
+            });
+            try {
+              await fetchFreshFromServer(persisted.cacheKey);
+            } catch {
+              // Pertahankan data tersimpan di browser bila pemeriksaan ringan gagal sementara.
+            }
+            return;
+          }
+        }
+
+        setMapState((prev) => ({
+          ...prev,
+          loading: true,
+          progress: 5,
+          error: null,
+        }));
+        await fetchFreshFromServer(null);
+      } catch (reason) {
+        if (!active) return;
+        setMapState((prev) => ({
+          ...prev,
+          loading: false,
+          progress: null,
+          error: reason instanceof Error ? reason.message : 'Data peta belum dapat diambil dari server.',
+        }));
+      }
+    }
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [reloadNonce]);
+
+  const { metadata, summary, points } = mapState;
+
+  const filtered = useMemo(() => (points || []).filter((point) => {
     if (noiseOnly && !point.is_noise && point.cluster_id !== -1) return false;
     if (clusterFilter !== 'all' && String(point.cluster_id) !== clusterFilter) return false;
     return true;
-  }), [points.data, clusterFilter, noiseOnly]);
+  }), [points, clusterFilter, noiseOnly]);
+
   const clusters = useMemo(
-    () => [...new Set((points.data || []).filter((p) => p.cluster_id !== -1).map((p) => p.cluster_id))].sort((a, b) => a - b),
-    [points.data],
+    () => [...new Set((points || []).filter((p) => p.cluster_id !== -1).map((p) => p.cluster_id))].sort((a, b) => a - b),
+    [points],
   );
 
   const activeFilterCount = clusterFilter !== 'all' || noiseOnly ? 1 : 0;
-  const datasetYearRange = formatDatasetYearRange(metadata.data?.dataset);
-  const isInitialLoading = metadata.loading || summary.loading || (canLoadPoints && points.loading && (!points.data || points.data.length === 0));
-  const loadError = metadata.error || summary.error || points.error;
+  const datasetYearRange = formatDatasetYearRange(metadata?.dataset);
 
   const handleClusterFilterChange = (value: string) => {
     setClusterFilter(value);
@@ -118,21 +288,77 @@ export function ClusterMapPage() {
 
     <div className="map-scope-strip"><span><Compass size={15} />METODE: DBSCAN · HAVERSINE</span><span><MapPinned size={15} />CAKUPAN: LAT −15° s.d. 10° · LON 90° s.d. 145°</span><span><Info size={15} />SUMBER: {datasetYearRange ? `DATASET PENELITIAN ${datasetYearRange}` : 'DATASET PENELITIAN AKTIF'}</span></div>
 
-    {isInitialLoading ? (
+    {mapState.loading ? (
       <StatePanel
         type="loading"
-        title="Memuat seluruh titik gempa"
-        message={
-          canLoadPoints && points.loading && loadProgress.total > 1
-            ? `Mengambil data gempa secara bertahap (${formatNumber(loadProgress.done)}/${formatNumber(loadProgress.total)} bagian) agar semua kejadian tampil stabil.`
-            : 'Mengambil seluruh data secara bertahap dari API agar semua kejadian tampil pada satu peta.'
+        title="Memuat Peta Klasterisasi"
+        message="Menyiapkan data spasial kejadian gempa dari server penelitian."
+        progress={mapState.progress}
+      />
+    ) : mapState.error ? (
+      <StatePanel
+        type="error"
+        title="Peta belum dapat ditampilkan"
+        message={mapState.error}
+        action={
+          <button type="button" className="button button-secondary" onClick={() => setReloadNonce((n) => n + 1)}>
+            <RefreshCw size={15} /> Coba lagi
+          </button>
         }
       />
-    ) : loadError ? <StatePanel type="error" title="Peta belum dapat ditampilkan" message={loadError || 'Sistem belum tersedia.'} action={<button className="button button-secondary" onClick={() => { metadata.reload(); summary.reload(); points.reload(); }}><RefreshCw size={15} /> Coba lagi</button>} /> : !metadata.data?.run ? <StatePanel type="empty" title="Belum ada hasil penelitian yang dipublikasikan" message="Peta akan menampilkan titik dan label klaster setelah admin mengaktifkan hasil DBSCAN berstatus Berhasil. Informasi gempa terkini BMKG tidak digunakan sebagai pengganti dataset penelitian." /> : <>
-      {summary.data && <div className="map-run-summary"><div><span>JUMLAH TITIK</span><strong>{formatNumber(summary.data.total_points)}</strong></div><div><span>JUMLAH KLASTER</span><strong>{formatNumber(summary.data.cluster_count)}</strong></div><div><span>TITIK NOISE</span><strong>{formatNumber(summary.data.noise_count)} <small>({formatNumber(summary.data.noise_percentage, 2)}%)</small></strong></div></div>}
-      
+    ) : !metadata?.run ? (
+      <StatePanel
+        type="empty"
+        title="Belum ada hasil penelitian yang dipublikasikan"
+        message="Peta akan menampilkan titik dan label klaster setelah admin mengaktifkan hasil DBSCAN berstatus Berhasil. Informasi gempa terkini BMKG tidak digunakan sebagai pengganti dataset penelitian."
+      />
+    ) : <>
+      {summary && <div className="map-run-summary"><div><span>JUMLAH TITIK</span><strong>{formatNumber(summary.total_points)}</strong></div><div><span>JUMLAH KLASTER</span><strong>{formatNumber(summary.cluster_count)}</strong></div><div><span>TITIK NOISE</span><strong>{formatNumber(summary.noise_count)} <small>({formatNumber(summary.noise_percentage, 2)}%)</small></strong></div></div>}
+
       {/* Desktop Toolbar (>= lg) */}
-      <div className="map-toolbar glass-card"><div className="map-toolbar-title"><span className="live-indicator" /><div><strong>Peta penelitian Indonesia</strong><small>Hasil #{metadata.data.run.id} · {metadata.data.run.metric} · status {statusLabel(metadata.data.run.status)}</small></div></div><div className="map-filters"><label><Filter size={14} /><select value={clusterFilter} onChange={(e) => handleClusterFilterChange(e.target.value)}><option value="all">Semua klaster</option>{clusters.map((id) => <option key={id} value={id}>Klaster {id}</option>)}</select></label><label className="toggle-label"><input type="checkbox" checked={noiseOnly} onChange={(e) => handleNoiseOnlyChange(e.target.checked)} /> Hanya Noise</label><button className="icon-button" onClick={resetFilters} aria-label="Reset filter"><RefreshCw size={15} /></button></div></div>
+      <div className="map-toolbar glass-card"><div className="map-toolbar-title"><span className="live-indicator" /><div><strong>Peta penelitian Indonesia</strong><small>Hasil #{metadata.run.id} · {metadata.run.metric} · status {statusLabel(metadata.run.status)}</small></div></div><div className="map-filters"><label><Filter size={14} /><select value={clusterFilter} onChange={(e) => handleClusterFilterChange(e.target.value)}><option value="all">Semua klaster</option>{clusters.map((id) => <option key={id} value={id}>Klaster {id}</option>)}</select></label><label className="toggle-label"><input type="checkbox" checked={noiseOnly} onChange={(e) => handleNoiseOnlyChange(e.target.checked)} /> Hanya Noise</label><button className="icon-button" onClick={resetFilters} aria-label="Reset filter"><RefreshCw size={15} /></button></div></div>
+
+      {/* Mobile Action Bar (< lg): sejajar rapi di atas peta, tidak menutupi konten */}
+      <div className="map-mobile-bar glass-card lg:hidden">
+        <div className="map-mobile-bar-info">
+          <span className="live-indicator" />
+          <div>
+            <strong>Hasil #{metadata.run.id}</strong>
+            <small>
+              {noiseOnly
+                ? 'Filter aktif: Hanya Noise (−1)'
+                : clusterFilter !== 'all'
+                  ? `Filter aktif: Klaster ${clusterFilter}`
+                  : `${formatNumber(points?.length ?? 0)} titik aktif`}
+            </small>
+          </div>
+        </div>
+        <div className="map-mobile-bar-actions">
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              className="icon-button"
+              onClick={resetFilters}
+              aria-label="Reset filter"
+              title="Reset filter"
+            >
+              <RefreshCw size={14} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            className="map-mobile-filter-btn"
+            aria-label="Buka filter peta"
+          >
+            <Filter size={15} />
+            <span>Filter</span>
+            {activeFilterCount > 0 && (
+              <span className="filter-badge">{activeFilterCount}</span>
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* Mobile Backdrop (< lg) */}
       {isDrawerOpen && (
@@ -147,7 +373,7 @@ export function ClusterMapPage() {
         <div className="map-main-panel glass-card">
           <div className="map-stage">
             <ClusterMap points={filtered} className="h-[100dvh]" />
-            {!points.loading && points.data && filtered.length === 0 && (
+            {points && filtered.length === 0 && (
               <div className="map-empty-overlay" role="status" aria-live="polite">
                 <div className="map-empty-card glass-card">
                   <Crosshair size={20} />
@@ -165,23 +391,6 @@ export function ClusterMapPage() {
                 </div>
               </div>
             )}
-            {/* Mobile Sticky-in-Map Filter Button (< lg): tidak menutupi header atau footer */}
-            <div className="map-floating-filter-wrap lg:hidden">
-              <button
-                type="button"
-                onClick={() => setIsDrawerOpen(true)}
-                className="map-floating-filter-btn"
-                aria-label="Buka filter peta"
-              >
-                <Filter size={16} />
-                <span>Filter</span>
-                {activeFilterCount > 0 && (
-                  <span className="filter-badge">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-            </div>
           </div>
 
           <div className="map-legend-panel">
@@ -216,8 +425,8 @@ export function ClusterMapPage() {
           </div>
           <div className="map-all-points-note">
             {activeFilterCount > 0
-              ? `Menampilkan ${formatNumber(filtered.length)} dari ${formatNumber(points.data?.length ?? 0)} titik gempa sesuai filter.`
-              : `Menampilkan seluruh ${formatNumber(points.data?.length ?? 0)} titik gempa pada hasil aktif.`}
+              ? `Menampilkan ${formatNumber(filtered.length)} dari ${formatNumber(points?.length ?? 0)} titik gempa sesuai filter.`
+              : `Menampilkan seluruh ${formatNumber(points?.length ?? 0)} titik gempa pada hasil aktif.`}
           </div>
         </div>
 
@@ -284,11 +493,11 @@ export function ClusterMapPage() {
           {/* Parameter Cards */}
           <div className="glass-card map-side-card">
             <span className="eyebrow">PARAMETER HASIL AKTIF</span>
-            <div className="run-id">#{metadata.data.run.id}</div>
+            <div className="run-id">#{metadata.run.id}</div>
             <div className="run-meta">
-              <span>EPSILON</span><strong>{formatNumber(metadata.data.run.eps_km, 2)} km</strong>
-              <span>JUMLAH MINIMUM TITIK (MinPts)</span><strong>{metadata.data.run.min_samples}</strong>
-              <span>METRIK JARAK</span><strong>{metadata.data.run.metric}</strong>
+              <span>EPSILON</span><strong>{formatNumber(metadata.run.eps_km, 2)} km</strong>
+              <span>JUMLAH MINIMUM TITIK (MinPts)</span><strong>{metadata.run.min_samples}</strong>
+              <span>METRIK JARAK</span><strong>{metadata.run.metric}</strong>
             </div>
             <p className="map-parameter-note">Parameter diambil dari hasil DBSCAN yang sedang dipublikasikan.</p>
           </div>
