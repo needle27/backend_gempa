@@ -6,15 +6,33 @@ import { PageHeader, SimulationTag, StatePanel, formatNumber } from '../../compo
 import { useResource } from '../../hooks/useResource';
 import { formatDatasetYearRange, statusLabel } from '../../utils/presentation';
 import { clusterColor, NOISE_COLOR } from '../../utils/clusterColors';
+import type { ResearchEarthquake } from '../../types/domain';
 
 const MAP_API_PAGE_SIZE = 5000;
+const MAP_API_CONCURRENCY = 2;
 
-async function getAllResearchEarthquakes(totalPoints: number) {
+async function getAllResearchEarthquakes(
+  totalPoints: number,
+  onProgress?: (done: number, total: number) => void,
+): Promise<ResearchEarthquake[]> {
   const totalPages = Math.max(1, Math.ceil(totalPoints / MAP_API_PAGE_SIZE));
-  const pageResults = await Promise.all(
-    Array.from({ length: totalPages }, (_, index) =>
-      getResearchEarthquakes(index + 1, MAP_API_PAGE_SIZE),
-    ),
+  const pageResults: ResearchEarthquake[][] = Array.from({ length: totalPages }, () => []);
+  let nextPageIndex = 0;
+  let completedPages = 0;
+
+  onProgress?.(0, totalPages);
+
+  async function worker(): Promise<void> {
+    while (nextPageIndex < totalPages) {
+      const currentIndex = nextPageIndex++;
+      pageResults[currentIndex] = await getResearchEarthquakes(currentIndex + 1, MAP_API_PAGE_SIZE);
+      completedPages += 1;
+      onProgress?.(completedPages, totalPages);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(MAP_API_CONCURRENCY, totalPages) }, () => worker()),
   );
   return pageResults.flat();
 }
@@ -26,11 +44,14 @@ export function ClusterMapPage() {
   const [noiseOnly, setNoiseOnly] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [loadProgress, setLoadProgress] = useState({ done: 0, total: 0 });
 
   const totalPoints = summary.data?.total_points ?? 0;
   const canLoadPoints = Boolean(metadata.data?.run && summary.data && totalPoints > 0);
   const points = useResource(
-    () => canLoadPoints ? getAllResearchEarthquakes(totalPoints) : Promise.resolve([]),
+    () => canLoadPoints
+      ? getAllResearchEarthquakes(totalPoints, (done, total) => setLoadProgress({ done, total }))
+      : Promise.resolve([]),
     [metadata.data?.run?.id, summary.data?.total_points],
   );
   const filtered = useMemo(() => (points.data || []).filter((point) => {
@@ -97,7 +118,17 @@ export function ClusterMapPage() {
 
     <div className="map-scope-strip"><span><Compass size={15} />METODE: DBSCAN · HAVERSINE</span><span><MapPinned size={15} />CAKUPAN: LAT −15° s.d. 10° · LON 90° s.d. 145°</span><span><Info size={15} />SUMBER: {datasetYearRange ? `DATASET PENELITIAN ${datasetYearRange}` : 'DATASET PENELITIAN AKTIF'}</span></div>
 
-    {isInitialLoading ? <StatePanel type="loading" title="Memuat seluruh titik gempa" message="Mengambil seluruh data secara bertahap dari API agar semua kejadian tampil pada satu peta." /> : loadError ? <StatePanel type="error" title="Peta belum dapat ditampilkan" message={loadError || 'Sistem belum tersedia.'} action={<button className="button button-secondary" onClick={() => { metadata.reload(); summary.reload(); points.reload(); }}><RefreshCw size={15} /> Coba lagi</button>} /> : !metadata.data?.run ? <StatePanel type="empty" title="Belum ada hasil penelitian yang dipublikasikan" message="Peta akan menampilkan titik dan label klaster setelah admin mengaktifkan hasil DBSCAN berstatus Berhasil. Informasi gempa terkini BMKG tidak digunakan sebagai pengganti dataset penelitian." /> : <>
+    {isInitialLoading ? (
+      <StatePanel
+        type="loading"
+        title="Memuat seluruh titik gempa"
+        message={
+          canLoadPoints && points.loading && loadProgress.total > 1
+            ? `Mengambil data gempa secara bertahap (${formatNumber(loadProgress.done)}/${formatNumber(loadProgress.total)} bagian) agar semua kejadian tampil stabil.`
+            : 'Mengambil seluruh data secara bertahap dari API agar semua kejadian tampil pada satu peta.'
+        }
+      />
+    ) : loadError ? <StatePanel type="error" title="Peta belum dapat ditampilkan" message={loadError || 'Sistem belum tersedia.'} action={<button className="button button-secondary" onClick={() => { metadata.reload(); summary.reload(); points.reload(); }}><RefreshCw size={15} /> Coba lagi</button>} /> : !metadata.data?.run ? <StatePanel type="empty" title="Belum ada hasil penelitian yang dipublikasikan" message="Peta akan menampilkan titik dan label klaster setelah admin mengaktifkan hasil DBSCAN berstatus Berhasil. Informasi gempa terkini BMKG tidak digunakan sebagai pengganti dataset penelitian." /> : <>
       {summary.data && <div className="map-run-summary"><div><span>JUMLAH TITIK</span><strong>{formatNumber(summary.data.total_points)}</strong></div><div><span>JUMLAH KLASTER</span><strong>{formatNumber(summary.data.cluster_count)}</strong></div><div><span>TITIK NOISE</span><strong>{formatNumber(summary.data.noise_count)} <small>({formatNumber(summary.data.noise_percentage, 2)}%)</small></strong></div></div>}
       
       {/* Desktop Toolbar (>= lg) */}

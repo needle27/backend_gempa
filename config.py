@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from dotenv import load_dotenv
+from sqlalchemy.pool import NullPool
 
 load_dotenv()
 
@@ -32,6 +33,28 @@ def _as_float_list(value: str | None, default: tuple[float, ...]) -> list[float]
         raise ValueError("EPSILON_DEFAULT_GRID_KM harus berupa daftar angka dipisahkan koma.") from exc
 
 
+def _build_engine_options(db_url: str | None) -> dict[str, Any]:
+    """Configure SQLAlchemy pooling safely for serverless (Vercel) vs stateful workers."""
+    url_text = str(db_url or "").strip().lower()
+    if not url_text or url_text.startswith("sqlite"):
+        return {}
+
+    options: dict[str, Any] = {}
+    if url_text.startswith("postgresql"):
+        options["connect_args"] = {"connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT_SECONDS", "10"))}
+
+    use_null_pool = bool(os.getenv("VERCEL")) or _as_bool(os.getenv("DB_NULL_POOL"), default=False)
+    if use_null_pool:
+        options["poolclass"] = NullPool
+    else:
+        options["pool_pre_ping"] = True
+        options["pool_recycle"] = int(os.getenv("DB_POOL_RECYCLE_SECONDS", "300"))
+        options["pool_size"] = int(os.getenv("DB_POOL_SIZE", "5"))
+        options["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "5"))
+
+    return options
+
+
 class BaseConfig:
     APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
     SECRET_KEY = os.getenv("SECRET_KEY")
@@ -39,10 +62,7 @@ class BaseConfig:
 
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_pre_ping": True,
-        "pool_recycle": 1800,
-    }
+    SQLALCHEMY_ENGINE_OPTIONS = _build_engine_options(SQLALCHEMY_DATABASE_URI)
 
     REDIS_URL = os.getenv("REDIS_URL")
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or REDIS_URL
@@ -184,6 +204,10 @@ def load_config(app, config_name: str | Mapping[str, Any] | None = None) -> None
     if isinstance(config_name, Mapping):
         app.config.from_object(DevelopmentConfig)
         app.config.update(config_name)
+        if "SQLALCHEMY_ENGINE_OPTIONS" not in config_name:
+            app.config["SQLALCHEMY_ENGINE_OPTIONS"] = _build_engine_options(
+                app.config.get("SQLALCHEMY_DATABASE_URI")
+            )
         return
 
     selected = (config_name or os.getenv("APP_ENV", "development")).strip().lower()
@@ -191,6 +215,10 @@ def load_config(app, config_name: str | Mapping[str, Any] | None = None) -> None
     if config_class is None:
         raise ValueError(f"APP_ENV tidak dikenal: {selected}")
     app.config.from_object(config_class)
+    if config_class is not TestingConfig:
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = _build_engine_options(
+            app.config.get("SQLALCHEMY_DATABASE_URI")
+        )
 
 
 def validate_config(app) -> None:

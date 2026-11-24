@@ -16,6 +16,7 @@ from repositories.user_repository import UserRepository
 from services.audit_service import AuditService
 from services.auth_service import AuthService
 from utils.api_response import error, success
+from utils.db_retry import run_read_with_retry
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -80,7 +81,7 @@ def refresh():
     except (TypeError, ValueError):
         return error(message="Token tidak valid.", code="AUTH_REQUIRED", status_code=401)
 
-    user = UserRepository().get(user_id)
+    user = run_read_with_retry(lambda: UserRepository().get(user_id))
     if user is None or not user.is_active:
         return error(message="Akun tidak aktif.", code="AUTH_REQUIRED", status_code=401)
 
@@ -129,7 +130,7 @@ def me():
     except (TypeError, ValueError):
         return error(message="Token tidak valid.", code="AUTH_REQUIRED", status_code=401)
 
-    user = UserRepository().get(user_id)
+    user = run_read_with_retry(lambda: UserRepository().get(user_id))
     if user is None or not user.is_active:
         return error(message="Akun tidak aktif.", code="AUTH_REQUIRED", status_code=401)
 

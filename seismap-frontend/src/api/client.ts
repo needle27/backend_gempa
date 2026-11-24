@@ -196,7 +196,32 @@ async function sendOnce<T>(path: string, options: RequestOptions = {}): Promise<
   return parseResponse<T>(response, path);
 }
 
-export async function apiRequestEnvelope<T>(path: string, options: RequestOptions = {}): Promise<ApiEnvelope<T>> {
+const GET_MAX_ATTEMPTS = 3;
+
+function isTransientGetError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  return error.status === 0 || error.status >= 500;
+}
+
+function waitForRetry(delayMs: number, signal?: AbortSignal | null): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, delayMs);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+async function sendWithTokenRefresh<T>(path: string, options: RequestOptions = {}): Promise<ApiEnvelope<T>> {
   try {
     return await sendOnce<T>(path, options);
   } catch (error) {
@@ -216,6 +241,25 @@ export async function apiRequestEnvelope<T>(path: string, options: RequestOption
     }
     throw error;
   }
+}
+
+export async function apiRequestEnvelope<T>(path: string, options: RequestOptions = {}): Promise<ApiEnvelope<T>> {
+  const method = (options.method || 'GET').toUpperCase();
+  const isRetryable = method === 'GET' || method === 'HEAD';
+  const maxAttempts = isRetryable ? GET_MAX_ATTEMPTS : 1;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await sendWithTokenRefresh<T>(path, options);
+    } catch (error) {
+      if (!isRetryable || attempt >= maxAttempts || !isTransientGetError(error) || options.signal?.aborted) {
+        throw error;
+      }
+      const backoffMs = 450 * attempt + Math.floor(Math.random() * 200);
+      await waitForRetry(backoffMs, options.signal);
+    }
+  }
+  throw new ApiError('Tidak dapat terhubung ke server. Periksa koneksi dan pastikan server sedang berjalan.', 0, 'NETWORK_ERROR');
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
