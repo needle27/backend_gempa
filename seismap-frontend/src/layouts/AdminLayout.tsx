@@ -140,24 +140,26 @@ export function AdminLayout() {
           </div>
         </div>
         <div className="topbar-actions">
-          <LanguageToggle />
           <span className="topbar-env"><i />{IS_PREVIEW_MODE ? t.adminNav.previewModeBadge : t.adminNav.apiModeBadge}</span>
           <div className="user-chip">
             <span className="avatar">{user?.username?.slice(0, 1).toUpperCase() || 'A'}</span>
             <span><strong>{user?.username || (IS_PREVIEW_MODE ? t.adminNav.previewUser : t.adminNav.defaultAdmin)}</strong><small>{user?.role || (IS_PREVIEW_MODE ? t.adminNav.previewRole : t.adminNav.defaultRole)}</small></span>
             <ChevronDown size={14} />
           </div>
-          {!IS_PREVIEW_MODE && user && (
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => setShowLogoutConfirm(true)}
-              aria-label={t.adminNav.logoutAria}
-              title={t.adminNav.logoutAria}
-            >
-              <LogOut size={17} />
-            </button>
-          )}
+          <div className="topbar-right-stack">
+            <LanguageToggle className="lang-toggle-xs" />
+            {!IS_PREVIEW_MODE && user && (
+              <button
+                type="button"
+                className="icon-button topbar-logout-btn"
+                onClick={() => setShowLogoutConfirm(true)}
+                aria-label={t.adminNav.logoutAria}
+                title={t.adminNav.logoutAria}
+              >
+                <LogOut size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </header>
       <main className="admin-content" id="admin-main-content" tabIndex={-1} ref={mainRef}>

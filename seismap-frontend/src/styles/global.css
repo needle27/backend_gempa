@@ -4249,11 +4249,30 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
   flex-shrink: 0;
 }
 
+.topbar-actions {
+  margin-left: auto;
+}
+
+.topbar-right-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.topbar-logout-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+
 .lang-toggle {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 3px;
+  padding: 2px;
   border-radius: 999px;
   border: 1px solid rgba(208, 232, 252, 0.22);
   background: rgba(7, 19, 34, 0.72);
@@ -4264,15 +4283,16 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  min-width: 32px;
-  padding: 0 9px;
+  min-height: 22px;
+  min-width: 24px;
+  padding: 0 7px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: #8ea7bf;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
+  line-height: 1;
   letter-spacing: 0.06em;
   cursor: pointer;
   transition:
@@ -4280,6 +4300,19 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
     color 220ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lang-toggle.lang-toggle-xs {
+  gap: 1px;
+  padding: 2px;
+}
+
+.lang-toggle.lang-toggle-xs .lang-toggle-btn {
+  min-height: 16px;
+  min-width: 20px;
+  padding: 0 5px;
+  font-size: 8px;
+  letter-spacing: 0.05em;
 }
 
 .lang-toggle-btn:hover:not(.is-active) {
@@ -4299,8 +4332,8 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
 
 .login-lang-toggle {
   position: absolute;
-  top: 30px;
-  right: 35px;
+  top: 24px;
+  right: 28px;
   z-index: 2;
 }
 
@@ -4308,18 +4341,31 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
   .public-nav-actions {
     gap: 6px;
   }
-  .lang-toggle {
-    padding: 2px;
+  .admin-shell .admin-topbar {
+    padding-block: 7px;
+  }
+  .topbar-right-stack {
+    gap: 3px;
+  }
+  .topbar-logout-btn {
+    width: 36px;
+    height: 34px;
   }
   .lang-toggle-btn {
-    min-height: 26px;
-    min-width: 28px;
-    padding: 0 7px;
-    font-size: 9px;
+    min-height: 20px;
+    min-width: 22px;
+    padding: 0 6px;
+    font-size: 8.5px;
+  }
+  .lang-toggle.lang-toggle-xs .lang-toggle-btn {
+    min-height: 15px;
+    min-width: 18px;
+    padding: 0 4.5px;
+    font-size: 7.5px;
   }
   .login-lang-toggle {
-    top: 18px;
-    right: 18px;
+    top: 16px;
+    right: 16px;
   }
 }
 
