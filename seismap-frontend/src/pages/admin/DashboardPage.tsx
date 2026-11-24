@@ -1,7 +1,7 @@
 import { Activity, ArrowRight, Database, ExternalLink, FileClock, Layers3, Rocket, ShieldCheck, Waves } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getDatasets, getPublicMetadata, getPublicSummary } from '../../api/services';
-import { PageHeader, SimulationTag, StatePanel, StatCard, StatusBadge, formatDate, formatNumber } from '../../components/ui';
+import { GlassCard, PageHeader, SimulationTag, StatePanel, StatCard, StatusBadge, formatDate, formatNumber } from '../../components/ui';
 import { useResource } from '../../hooks/useResource';
 import { IS_PREVIEW_MODE } from '../../config/env';
 import { formatPercent } from '../../utils/presentation';
@@ -62,9 +62,9 @@ export function DashboardPage() {
           </div>
 
           {/* Kartu Sorotan: Hasil Klasterisasi Aktif di WebGIS Publik */}
-          <section className="glass-card active-publication-card">
+          <GlassCard className="active-publication-card">
             <div className="active-publication-header">
-              <div>
+              <div className="active-publication-title-area">
                 <span className="eyebrow"><Rocket size={13} /> PUBLIKASI WEBGIS AKTIF</span>
                 <h3 style={{ margin: '4px 0 2px', fontSize: '17px', color: '#f0f7fe' }}>
                   {activeRun ? `Hasil Klasterisasi Aktif #${activeRun.id}` : 'Hasil Klasterisasi Aktif'}
@@ -75,7 +75,7 @@ export function DashboardPage() {
                     : 'Rujukan data resmi yang saat ini disajikan kepada publik.'}
                 </p>
               </div>
-              <div>
+              <div className="active-publication-badge-area">
                 {activeRun ? (
                   <span className="active-label"><i /> Sedang Tayang di WebGIS</span>
                 ) : (
@@ -138,19 +138,18 @@ export function DashboardPage() {
                 }
               />
             )}
-          </section>
+          </GlassCard>
 
           <div className="dashboard-grid">
-            <section className="glass-card">
-              <div className="card-heading">
-                <div>
-                  <h3>Dataset terbaru</h3>
-                  <p>Daftar dataset penelitian yang tersimpan.</p>
-                </div>
+            <GlassCard
+              title="Dataset terbaru"
+              subtitle="Daftar dataset penelitian yang tersimpan."
+              action={
                 <Link to="/admin/dataset" className="inline-link">
                   Lihat semua <ArrowRight size={14} />
                 </Link>
-              </div>
+              }
+            >
               {list.length ? (
                 <div className="dataset-mini-list">
                   {list.slice(0, 4).map((item) => (
@@ -167,16 +166,14 @@ export function DashboardPage() {
               ) : (
                 <StatePanel type="empty" title="Belum ada dataset" message="Unggah dataset CSV yang telah dibersihkan dari Jupyter Notebook." />
               )}
-            </section>
+            </GlassCard>
 
-            <section className="glass-card workflow-card">
-              <div className="card-heading">
-                <div>
-                  <h3>Alur Kerja Penelitian</h3>
-                  <p>Tahapan pengelolaan hasil DBSCAN.</p>
-                </div>
-                <span className="workflow-icon"><Layers3 size={18} /></span>
-              </div>
+            <GlassCard
+              className="workflow-card"
+              title="Alur Kerja Penelitian"
+              subtitle="Tahapan pengelolaan hasil DBSCAN."
+              action={<span className="workflow-icon"><Layers3 size={18} /></span>}
+            >
               <div className="workflow-steps">
                 <div>
                   <i>01</i>
@@ -199,7 +196,7 @@ export function DashboardPage() {
                   <Link to="/admin/riwayat-run">Buka</Link>
                 </div>
               </div>
-            </section>
+            </GlassCard>
           </div>
 
           <div className="admin-note">
