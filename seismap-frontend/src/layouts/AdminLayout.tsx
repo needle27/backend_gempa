@@ -3,6 +3,7 @@ import { Activity, ArrowLeft, Atom, ChevronDown, ClipboardCheck, Database, FileC
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { IS_PREVIEW_MODE } from '../config/env';
+import { ConfirmModal } from '../components/admin/ConfirmModal';
 import { PreviewBanner } from '../components/ui';
 
 const menu = [
@@ -22,10 +23,13 @@ export function AdminLayout() {
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     setIsSidebarOpen(false);
+    setShowLogoutConfirm(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -45,8 +49,18 @@ export function AdminLayout() {
   }, [isSidebarOpen]);
 
   const handleLogout = async () => {
-    try { await signOut(); navigate('/admin/login'); }
-    catch { /* Sesi tetap ditampilkan jika proses keluar tidak berhasil. */ }
+    if (logoutBusy) return;
+    setLogoutBusy(true);
+    try {
+      await signOut();
+      setShowLogoutConfirm(false);
+      navigate('/admin/login');
+    } catch {
+      setShowLogoutConfirm(false);
+      /* Sesi tetap ditampilkan jika proses keluar tidak berhasil. */
+    } finally {
+      setLogoutBusy(false);
+    }
   };
 
   return <div className="admin-shell">
@@ -130,7 +144,13 @@ export function AdminLayout() {
             <ChevronDown size={14} />
           </div>
           {!IS_PREVIEW_MODE && user && (
-            <button className="icon-button" onClick={() => void handleLogout()} aria-label="Keluar">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => setShowLogoutConfirm(true)}
+              aria-label="Keluar"
+              title="Keluar"
+            >
               <LogOut size={17} />
             </button>
           )}
@@ -140,5 +160,28 @@ export function AdminLayout() {
         <Outlet />
       </main>
     </section>
+
+    <ConfirmModal
+      isOpen={showLogoutConfirm}
+      title="Konfirmasi Keluar"
+      message={
+        <>
+          <p>
+            Apakah Anda yakin ingin keluar dari ruang kerja administrator
+            {user?.username ? <> (<strong>{user.username}</strong>)</> : ''}?
+          </p>
+          <p>Sesi Anda akan diakhiri dan Anda perlu masuk kembali untuk mengakses halaman admin.</p>
+        </>
+      }
+      confirmLabel="Ya, Keluar"
+      cancelLabel="Batal"
+      variant="danger"
+      loading={logoutBusy}
+      icon={<LogOut size={20} />}
+      onConfirm={() => void handleLogout()}
+      onCancel={() => {
+        if (!logoutBusy) setShowLogoutConfirm(false);
+      }}
+    />
   </div>;
 }
