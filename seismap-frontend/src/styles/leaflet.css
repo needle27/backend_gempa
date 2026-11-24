@@ -36,7 +36,8 @@
   border-right-color: rgba(9, 25, 42, .97) !important;
 }
 
-.seismap-map-tooltip .map-tooltip-content {
+.seismap-map-tooltip .map-tooltip-content,
+.seismap-map-popup .map-tooltip-content {
   display: grid;
   width: 100%;
   min-width: 0;
@@ -51,7 +52,8 @@
   word-break: normal;
 }
 
-.seismap-map-tooltip .map-tooltip-content strong {
+.seismap-map-tooltip .map-tooltip-content strong,
+.seismap-map-popup .map-tooltip-content strong {
   display: block;
   min-width: 0;
   color: #F0F7FF;
@@ -63,13 +65,51 @@
   word-break: normal;
 }
 
-.seismap-map-tooltip .map-tooltip-content span {
+.seismap-map-tooltip .map-tooltip-content span,
+.seismap-map-popup .map-tooltip-content span {
   display: block;
   min-width: 0;
   color: #B6C9DA;
   white-space: normal;
   overflow-wrap: break-word;
   word-break: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dark theme styling for interactive L.popup (touch-friendly click inspection) */
+.leaflet-popup.seismap-map-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  color: #e8f5ff;
+  border: 1px solid rgba(185, 218, 245, .24);
+  border-radius: 12px;
+  background: rgba(9, 25, 42, .97);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .42);
+}
+
+.leaflet-popup.seismap-map-popup .leaflet-popup-content {
+  width: min(252px, calc(100vw - 44px)) !important;
+  margin: 0;
+  padding-right: 18px;
+}
+
+.leaflet-popup.seismap-map-popup .leaflet-popup-tip {
+  background: rgba(9, 25, 42, .97);
+  border: 1px solid rgba(185, 218, 245, .2);
+}
+
+.leaflet-popup.seismap-map-popup a.leaflet-popup-close-button {
+  top: 7px;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  color: #9eb7cc;
+  border-radius: 6px;
+}
+
+.leaflet-popup.seismap-map-popup a.leaflet-popup-close-button:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, .1);
 }
 
 @media (max-width: 620px) {

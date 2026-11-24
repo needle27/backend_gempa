@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Compass, Crosshair, Filter, Info, LocateFixed, MapPinned, RefreshCw, X } from 'lucide-react';
+import { ChevronDown, Compass, Crosshair, Filter, Info, LocateFixed, MapPinned, RefreshCw, X } from 'lucide-react';
 import { getPublicMetadata, getPublicSummary, getResearchEarthquakes } from '../../api/services';
 import { ClusterMap } from '../../components/ClusterMap';
 import { PageHeader, SimulationTag, StatePanel, formatNumber } from '../../components/ui';
 import { useResource } from '../../hooks/useResource';
-import { statusLabel } from '../../utils/presentation';
+import { formatDatasetYearRange, statusLabel } from '../../utils/presentation';
 import { clusterColor, NOISE_COLOR } from '../../utils/clusterColors';
 
 const MAP_API_PAGE_SIZE = 5000;
@@ -25,20 +25,47 @@ export function ClusterMapPage() {
   const [clusterFilter, setClusterFilter] = useState('all');
   const [noiseOnly, setNoiseOnly] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
 
   const totalPoints = summary.data?.total_points ?? 0;
+  const canLoadPoints = Boolean(metadata.data?.run && summary.data && totalPoints > 0);
   const points = useResource(
-    () => metadata.data?.run ? getAllResearchEarthquakes(totalPoints) : Promise.resolve([]),
-    [metadata.data?.run?.id, totalPoints],
+    () => canLoadPoints ? getAllResearchEarthquakes(totalPoints) : Promise.resolve([]),
+    [metadata.data?.run?.id, summary.data?.total_points],
   );
   const filtered = useMemo(() => (points.data || []).filter((point) => {
     if (noiseOnly && !point.is_noise && point.cluster_id !== -1) return false;
     if (clusterFilter !== 'all' && String(point.cluster_id) !== clusterFilter) return false;
     return true;
   }), [points.data, clusterFilter, noiseOnly]);
-  const clusters = [...new Set((points.data || []).filter((p) => p.cluster_id !== -1).map((p) => p.cluster_id))].sort((a, b) => a - b);
+  const clusters = useMemo(
+    () => [...new Set((points.data || []).filter((p) => p.cluster_id !== -1).map((p) => p.cluster_id))].sort((a, b) => a - b),
+    [points.data],
+  );
 
-  const activeFilterCount = (clusterFilter !== 'all' ? 1 : 0) + (noiseOnly ? 1 : 0);
+  const activeFilterCount = clusterFilter !== 'all' || noiseOnly ? 1 : 0;
+  const datasetYearRange = formatDatasetYearRange(metadata.data?.dataset);
+  const isInitialLoading = metadata.loading || summary.loading || (canLoadPoints && points.loading && (!points.data || points.data.length === 0));
+  const loadError = metadata.error || summary.error || points.error;
+
+  const handleClusterFilterChange = (value: string) => {
+    setClusterFilter(value);
+    if (value !== 'all') {
+      setNoiseOnly(false);
+    }
+  };
+
+  const handleNoiseOnlyChange = (checked: boolean) => {
+    setNoiseOnly(checked);
+    if (checked) {
+      setClusterFilter('all');
+    }
+  };
+
+  const resetFilters = () => {
+    setClusterFilter('all');
+    setNoiseOnly(false);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -68,29 +95,13 @@ export function ClusterMapPage() {
       </div>
     </section>
 
-    <div className="map-scope-strip"><span><Compass size={15} />METODE: DBSCAN · HAVERSINE</span><span><MapPinned size={15} />CAKUPAN: LAT −15° s.d. 10° · LON 90° s.d. 145°</span><span><Info size={15} />SUMBER: DATASET PENELITIAN 2021–2025</span></div>
+    <div className="map-scope-strip"><span><Compass size={15} />METODE: DBSCAN · HAVERSINE</span><span><MapPinned size={15} />CAKUPAN: LAT −15° s.d. 10° · LON 90° s.d. 145°</span><span><Info size={15} />SUMBER: {datasetYearRange ? `DATASET PENELITIAN ${datasetYearRange}` : 'DATASET PENELITIAN AKTIF'}</span></div>
 
-    {metadata.loading || (points.loading && !points.data) ? <StatePanel type="loading" title="Memuat seluruh titik gempa" message="Mengambil seluruh data secara bertahap dari API agar semua kejadian tampil pada satu peta." /> : metadata.error || points.error ? <StatePanel type="error" title="Peta belum dapat ditampilkan" message={metadata.error || points.error || 'Sistem belum tersedia.'} action={<button className="button button-secondary" onClick={() => { metadata.reload(); points.reload(); }}><RefreshCw size={15} /> Coba lagi</button>} /> : !metadata.data?.run ? <StatePanel type="empty" title="Belum ada hasil penelitian yang dipublikasikan" message="Peta akan menampilkan titik dan label klaster setelah admin mengaktifkan hasil DBSCAN berstatus Berhasil. Informasi gempa terkini BMKG tidak digunakan sebagai pengganti dataset penelitian." /> : <>
-      {summary.data && <div className="map-run-summary"><div><span>JUMLAH TITIK</span><strong>{formatNumber(summary.data.total_points)}</strong></div><div><span>JUMLAH KLASTER</span><strong>{formatNumber(summary.data.cluster_count)}</strong></div><div><span>TITIK NOISE</span><strong>{formatNumber(summary.data.noise_count)} <small>({formatNumber(summary.data.noise_percentage, 1)}%)</small></strong></div></div>}
+    {isInitialLoading ? <StatePanel type="loading" title="Memuat seluruh titik gempa" message="Mengambil seluruh data secara bertahap dari API agar semua kejadian tampil pada satu peta." /> : loadError ? <StatePanel type="error" title="Peta belum dapat ditampilkan" message={loadError || 'Sistem belum tersedia.'} action={<button className="button button-secondary" onClick={() => { metadata.reload(); summary.reload(); points.reload(); }}><RefreshCw size={15} /> Coba lagi</button>} /> : !metadata.data?.run ? <StatePanel type="empty" title="Belum ada hasil penelitian yang dipublikasikan" message="Peta akan menampilkan titik dan label klaster setelah admin mengaktifkan hasil DBSCAN berstatus Berhasil. Informasi gempa terkini BMKG tidak digunakan sebagai pengganti dataset penelitian." /> : <>
+      {summary.data && <div className="map-run-summary"><div><span>JUMLAH TITIK</span><strong>{formatNumber(summary.data.total_points)}</strong></div><div><span>JUMLAH KLASTER</span><strong>{formatNumber(summary.data.cluster_count)}</strong></div><div><span>TITIK NOISE</span><strong>{formatNumber(summary.data.noise_count)} <small>({formatNumber(summary.data.noise_percentage, 2)}%)</small></strong></div></div>}
       
       {/* Desktop Toolbar (>= lg) */}
-      <div className="map-toolbar glass-card"><div className="map-toolbar-title"><span className="live-indicator" /><div><strong>Peta penelitian Indonesia</strong><small>Hasil #{metadata.data.run.id} · {metadata.data.run.metric} · status {statusLabel(metadata.data.run.status)}</small></div></div><div className="map-filters"><label><Filter size={14} /><select value={clusterFilter} onChange={(e) => setClusterFilter(e.target.value)}><option value="all">Semua klaster</option>{clusters.map((id) => <option key={id} value={id}>Klaster {id}</option>)}</select></label><label className="toggle-label"><input type="checkbox" checked={noiseOnly} onChange={(e) => setNoiseOnly(e.target.checked)} /> Hanya Noise</label><button className="icon-button" onClick={() => { setClusterFilter('all'); setNoiseOnly(false); }} aria-label="Reset filter"><RefreshCw size={15} /></button></div></div>
-      
-      {/* Mobile Floating Filter Button (< lg) */}
-      <button
-        type="button"
-        onClick={() => setIsDrawerOpen(true)}
-        className="map-floating-filter-btn fixed bottom-5 left-4 z-[1050] lg:hidden"
-        aria-label="Buka filter peta"
-      >
-        <Filter size={16} />
-        <span>Filter</span>
-        {activeFilterCount > 0 && (
-          <span className="filter-badge">
-            {activeFilterCount}
-          </span>
-        )}
-      </button>
+      <div className="map-toolbar glass-card"><div className="map-toolbar-title"><span className="live-indicator" /><div><strong>Peta penelitian Indonesia</strong><small>Hasil #{metadata.data.run.id} · {metadata.data.run.metric} · status {statusLabel(metadata.data.run.status)}</small></div></div><div className="map-filters"><label><Filter size={14} /><select value={clusterFilter} onChange={(e) => handleClusterFilterChange(e.target.value)}><option value="all">Semua klaster</option>{clusters.map((id) => <option key={id} value={id}>Klaster {id}</option>)}</select></label><label className="toggle-label"><input type="checkbox" checked={noiseOnly} onChange={(e) => handleNoiseOnlyChange(e.target.checked)} /> Hanya Noise</label><button className="icon-button" onClick={resetFilters} aria-label="Reset filter"><RefreshCw size={15} /></button></div></div>
 
       {/* Mobile Backdrop (< lg) */}
       {isDrawerOpen && (
@@ -103,10 +114,79 @@ export function ClusterMapPage() {
 
       <div className="map-page-layout">
         <div className="map-main-panel glass-card">
-          <ClusterMap points={filtered} className="h-[100dvh]" />
-          <div className="map-legend">{clusters.slice(0, 8).map((clusterId) => <span key={clusterId}><i className="legend-dot" style={{ backgroundColor: clusterColor(clusterId) }} />Klaster {clusterId}</span>)}{clusters.length > 8 && <span className="legend-more">+{clusters.length - 8} klaster lainnya</span>}<span><i className="legend-dot" style={{ backgroundColor: NOISE_COLOR }} />Noise (−1)</span></div>
+          <div className="map-stage">
+            <ClusterMap points={filtered} className="h-[100dvh]" />
+            {!points.loading && points.data && filtered.length === 0 && (
+              <div className="map-empty-overlay" role="status" aria-live="polite">
+                <div className="map-empty-card glass-card">
+                  <Crosshair size={20} />
+                  <strong>Tidak ada titik gempa untuk filter saat ini</strong>
+                  <p>
+                    {noiseOnly
+                      ? 'Tidak terdapat titik noise (−1) pada hasil klasterisasi aktif atau filter terlalu ketat.'
+                      : 'Kombinasi filter yang dipilih menghasilkan 0 kejadian gempa.'}
+                  </p>
+                  {activeFilterCount > 0 && (
+                    <button type="button" className="button button-secondary" onClick={resetFilters}>
+                      <RefreshCw size={14} /> Reset Filter
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* Mobile Sticky-in-Map Filter Button (< lg): tidak menutupi header atau footer */}
+            <div className="map-floating-filter-wrap lg:hidden">
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(true)}
+                className="map-floating-filter-btn"
+                aria-label="Buka filter peta"
+              >
+                <Filter size={16} />
+                <span>Filter</span>
+                {activeFilterCount > 0 && (
+                  <span className="filter-badge">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="map-legend-panel">
+            <button
+              type="button"
+              className="map-legend-toggle lg:hidden"
+              onClick={() => setIsLegendOpen((prev) => !prev)}
+              aria-expanded={isLegendOpen}
+              aria-controls="cluster-map-legend"
+            >
+              <span>
+                <strong>Legenda Peta</strong>
+                <small>{formatNumber(clusters.length)} klaster + Noise (−1)</small>
+              </span>
+              <ChevronDown size={16} className={isLegendOpen ? 'rotated' : ''} />
+            </button>
+            <div id="cluster-map-legend" className={`map-legend${isLegendOpen ? ' is-open' : ''}`}>
+              {clusters.slice(0, 8).map((clusterId) => (
+                <span key={clusterId}>
+                  <i className="legend-dot" style={{ backgroundColor: clusterColor(clusterId) }} />
+                  Klaster {clusterId}
+                </span>
+              ))}
+              {clusters.length > 8 && (
+                <span className="legend-more">+{formatNumber(clusters.length - 8)} klaster lainnya</span>
+              )}
+              <span>
+                <i className="legend-dot" style={{ backgroundColor: NOISE_COLOR }} />
+                Noise (−1)
+              </span>
+            </div>
+          </div>
           <div className="map-all-points-note">
-            Menampilkan seluruh {formatNumber(points.data?.length ?? 0)} titik gempa pada hasil aktif.
+            {activeFilterCount > 0
+              ? `Menampilkan ${formatNumber(filtered.length)} dari ${formatNumber(points.data?.length ?? 0)} titik gempa sesuai filter.`
+              : `Menampilkan seluruh ${formatNumber(points.data?.length ?? 0)} titik gempa pada hasil aktif.`}
           </div>
         </div>
 
@@ -141,7 +221,7 @@ export function ClusterMapPage() {
               <span>PILIH KLASTER</span>
               <select
                 value={clusterFilter}
-                onChange={(e) => setClusterFilter(e.target.value)}
+                onChange={(e) => handleClusterFilterChange(e.target.value)}
               >
                 <option value="all">Semua klaster</option>
                 {clusters.map((id) => (
@@ -154,14 +234,14 @@ export function ClusterMapPage() {
                 <input
                   type="checkbox"
                   checked={noiseOnly}
-                  onChange={(e) => setNoiseOnly(e.target.checked)}
+                  onChange={(e) => handleNoiseOnlyChange(e.target.checked)}
                 />
                 <span>Hanya Noise (−1)</span>
               </label>
               <button
                 type="button"
                 className="icon-button"
-                onClick={() => { setClusterFilter('all'); setNoiseOnly(false); }}
+                onClick={resetFilters}
                 aria-label="Reset filter"
                 title="Reset filter"
               >

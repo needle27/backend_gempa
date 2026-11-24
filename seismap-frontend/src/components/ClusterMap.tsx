@@ -20,23 +20,62 @@ function escapeHtml(value: unknown): string {
   return String(value ?? '—').replace(/[&<>'"]/g, (character) => entities[character] ?? character);
 }
 
+const mapDateFormatter = new Intl.DateTimeFormat('id-ID', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+const mapDateOnlyFormatter = new Intl.DateTimeFormat('id-ID', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+const magnitudeFormatter = new Intl.NumberFormat('id-ID', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 2,
+});
+const depthFormatter = new Intl.NumberFormat('id-ID', {
+  maximumFractionDigits: 2,
+});
+
+function formatPointDate(value: string | null | undefined): string {
+  if (!value) return '—';
+  const trimmed = value.trim();
+  if (!trimmed) return '—';
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return trimmed;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return mapDateOnlyFormatter.format(parsed);
+  }
+  return mapDateFormatter.format(parsed);
+}
+
 function tooltipContent(point: ResearchEarthquake): string {
   const location = point.lokasi || 'Lokasi tidak tersedia';
-  const depth = point.kedalaman === null ? '—' : `${point.kedalaman} km`;
-  const cluster = point.is_noise || point.cluster_id === -1 ? 'Noise (-1)' : `Klaster ${point.cluster_id}`;
+  const formattedDate = formatPointDate(point.tanggal);
+  const magnitudeValue = Number(point.magnitude);
+  const formattedMagnitude = Number.isFinite(magnitudeValue)
+    ? magnitudeFormatter.format(magnitudeValue)
+    : '—';
+  const depthValue = point.kedalaman === null ? NaN : Number(point.kedalaman);
+  const depth = Number.isFinite(depthValue) ? `${depthFormatter.format(depthValue)} km` : '—';
+  const cluster = point.is_noise || point.cluster_id === -1 ? 'Noise (−1)' : `Klaster ${point.cluster_id}`;
   return `<div class="map-tooltip-content">
     <strong>${escapeHtml(location)}</strong>
     <span>ID kejadian: ${escapeHtml(point.event_id)}</span>
-    <span>Tanggal: ${escapeHtml(point.tanggal)}</span>
-    <span>Magnitudo: ${escapeHtml(point.magnitude)}</span>
+    <span>Tanggal: ${escapeHtml(formattedDate)}</span>
+    <span>Magnitudo: ${escapeHtml(formattedMagnitude)}</span>
     <span>Kedalaman: ${escapeHtml(depth)}</span>
     <span>Kelompok: ${escapeHtml(cluster)}</span>
   </div>`;
 }
 
 /**
- * Render marker langsung melalui Leaflet agar 1.000 titik tidak membuat
- * ribuan subtree React dan Tooltip terpisah. Satu Tooltip dipakai bersama.
+ * Render marker langsung melalui Leaflet agar ribuan titik tidak membuat
+ * ribuan subtree React dan popup/tooltip terpisah.
+ * Hover menampilkan Tooltip ringkas; klik/tap membuka L.popup agar ramah layar sentuh.
  */
 function MapPoints({ points, compact }: { points: ResearchEarthquake[]; compact: boolean }) {
   const map = useMap();
@@ -49,6 +88,14 @@ function MapPoints({ points, compact }: { points: ResearchEarthquake[]; compact:
       offset: [0, -8],
       className: 'seismap-map-tooltip',
       opacity: 1,
+    });
+    const sharedPopup = L.popup({
+      offset: [0, -6],
+      className: 'seismap-map-popup',
+      closeButton: true,
+      autoClose: true,
+      closeOnClick: true,
+      maxWidth: 280,
     });
     const boundsPoints: Array<[number, number]> = [];
 
@@ -69,16 +116,25 @@ function MapPoints({ points, compact }: { points: ResearchEarthquake[]; compact:
         weight: 0.7,
       });
 
-      const showTooltip = () => {
+      const showHoverTooltip = () => {
+        if (sharedPopup.isOpen()) return;
         sharedTooltip
           .setLatLng(marker.getLatLng())
           .setContent(tooltipContent(point));
         map.openTooltip(sharedTooltip);
       };
 
-      marker.on('mouseover', showTooltip);
-      marker.on('click', showTooltip);
+      const showClickPopup = () => {
+        map.closeTooltip(sharedTooltip);
+        sharedPopup
+          .setLatLng(marker.getLatLng())
+          .setContent(tooltipContent(point));
+        map.openPopup(sharedPopup);
+      };
+
+      marker.on('mouseover', showHoverTooltip);
       marker.on('mouseout', () => map.closeTooltip(sharedTooltip));
+      marker.on('click', showClickPopup);
       marker.addTo(layer);
       boundsPoints.push([latitude, longitude]);
     });
@@ -92,7 +148,9 @@ function MapPoints({ points, compact }: { points: ResearchEarthquake[]; compact:
 
     return () => {
       map.closeTooltip(sharedTooltip);
+      map.closePopup(sharedPopup);
       sharedTooltip.remove();
+      sharedPopup.remove();
       layer.removeFrom(map);
     };
   }, [map, points, compact]);

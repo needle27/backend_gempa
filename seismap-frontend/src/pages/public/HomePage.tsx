@@ -6,12 +6,14 @@ import { Link } from 'react-router-dom';
 import { getPublicMetadata, getPublicSummary } from '../../api/services';
 import { SimulationTag, StatePanel, StatCard, formatNumber } from '../../components/ui';
 import { useResource } from '../../hooks/useResource';
+import { formatDatasetYearRange } from '../../utils/presentation';
 
 export function HomePage() {
   const summary = useResource(getPublicSummary, []);
   const metadata = useResource(getPublicMetadata, []);
   const data = summary.data;
   const dataset = metadata.data?.dataset;
+  const datasetYearRange = formatDatasetYearRange(dataset);
   const silhouetteSampleSize = data?.silhouette_sample_size ?? metadata.data?.run?.silhouette_sample_size ?? null;
 
   return <div className="home-page">
@@ -21,12 +23,12 @@ export function HomePage() {
         <h1>Membaca pola<br /><span>gempa Indonesia.</span></h1>
         <p className="hero-description">SEISMAP menyajikan hasil penelitian klasterisasi spasial kejadian gempa bumi di Indonesia. Telusuri sebaran titik, pahami kelompok lokasi yang terbentuk, dan baca karakteristik setiap klaster melalui WebGIS.</p>
         <div className="hero-actions"><Link className="button button-primary" to="/peta-klaster">Jelajahi Peta Klaster <ArrowRight size={16} /></Link><Link className="button button-secondary" to="/analisis">Pahami Analisis <ArrowUpRight size={16} /></Link></div>
-        <div className="hero-trust"><span><ShieldCheck size={15} />Hasil penelitian DBSCAN</span><span><Crosshair size={15} />Koordinat · Haversine</span><span><Database size={15} />Periode 2021–2025</span></div>
+        <div className="hero-trust"><span><ShieldCheck size={15} />Hasil penelitian DBSCAN</span><span><Crosshair size={15} />Koordinat · Haversine</span><span><Database size={15} />{datasetYearRange ? `Periode ${datasetYearRange}` : 'Dataset penelitian aktif'}</span></div>
       </div>
       <div className="hero-visual" aria-label="Ilustrasi visual geospasial Indonesia">
         <div className="hero-orbit orbit-a" /><div className="hero-orbit orbit-b" /><div className="hero-orbit orbit-c" />
         <div className="hero-globe"><div className="globe-grid" /><div className="island island-sumatra" /><div className="island island-java" /><div className="island island-kalimantan" /><div className="island island-sulawesi" /><div className="island island-papua" /><span className="map-ping ping-one" /><span className="map-ping ping-two" /><span className="map-ping ping-three" /></div>
-        <div className="floating-coordinate"><small>CAKUPAN PENELITIAN</small><strong>INDONESIA</strong><span>90°E — 145°E</span></div>
+        <div className="floating-coordinate"><small>CAKUPAN PENELITIAN</small><strong>INDONESIA</strong><span>90°–145° BT</span></div>
         <div className="floating-live"><span className="pulse-dot" /><span><strong>Penelitian spasial</strong><small>DBSCAN · Haversine</small></span></div>
       </div>
     </section>
@@ -36,7 +38,7 @@ export function HomePage() {
     <section className="scope-section">
       <div className="section-heading-row"><div><span className="eyebrow">RUANG LINGKUP</span><h2>Apa yang dicakup penelitian?</h2></div><span className="section-side-note">Batas dan atribut mengikuti rancangan penelitian</span></div>
       <div className="scope-grid">
-        <article className="scope-card glass-card"><span className="scope-icon"><CalendarDays size={18} /></span><span className="scope-label">PERIODE DATA</span><strong>2021–2025</strong><p>Rentang waktu dataset penelitian yang dianalisis.</p></article>
+        <article className="scope-card glass-card"><span className="scope-icon"><CalendarDays size={18} /></span><span className="scope-label">PERIODE DATA</span><strong>{datasetYearRange ?? 'Dataset penelitian aktif'}</strong><p>Rentang waktu dataset penelitian yang dianalisis.</p></article>
         <article className="scope-card glass-card"><span className="scope-icon"><MapPinned size={18} /></span><span className="scope-label">CAKUPAN KOORDINAT</span><strong>90°–145° BT</strong><p>Batas longitude penelitian; latitude berada pada −15° sampai 10°.</p></article>
         <article className="scope-card glass-card"><span className="scope-icon"><Crosshair size={18} /></span><span className="scope-label">FITUR KLASTERISASI</span><strong>Latitude & Longitude</strong><p>Koordinat menjadi dasar pembentukan klaster spasial.</p></article>
         <article className="scope-card glass-card"><span className="scope-icon"><Layers3 size={18} /></span><span className="scope-label">METRIK JARAK</span><strong>Haversine</strong><p>Mengukur jarak antar-koordinat pada permukaan bumi.</p></article>

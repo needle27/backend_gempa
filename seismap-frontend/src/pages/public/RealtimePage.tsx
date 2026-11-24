@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, BookOpen, Clock3, ExternalLink, MapPin, RadioTower, RefreshCw } from 'lucide-react';
-import { getRealtimeFeed } from '../../api/services';
+import { getPublicMetadata, getRealtimeFeed } from '../../api/services';
 import { PageHeader, SimulationTag, StatePanel, GlassCard, formatDate, formatNumber } from '../../components/ui';
+import { useResource } from '../../hooks/useResource';
 import type { RealtimeEarthquake, RealtimeFeed } from '../../types/domain';
-import { statusLabel } from '../../utils/presentation';
+import { formatDatasetYearRange, statusLabel } from '../../utils/presentation';
 import { RealtimeEarthquakeMap } from '../../components/RealtimeEarthquakeMap';
 
 type FeedTab = 'latest' | 'm5' | 'felt';
 
 export function RealtimePage() {
+  const metadata = useResource(getPublicMetadata, []);
+  const datasetYearRange = formatDatasetYearRange(metadata.data?.dataset);
   const [tab, setTab] = useState<FeedTab>('latest');
   const [feed, setFeed] = useState<RealtimeFeed<RealtimeEarthquake> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,7 +134,7 @@ export function RealtimePage() {
         </aside>
       </div>
     </>}
-    <div className="realtime-separation-note glass-card"><BookOpen size={17} /><div><strong>Terpisah dari penelitian DBSCAN</strong><p>Informasi BMKG ini merupakan informasi pelengkap yang diperbarui melalui layanan informasi terkini. Data di halaman ini tidak digabungkan ke dataset penelitian 2021–2025, tidak membentuk klaster, dan tidak digunakan dalam hasil analisis penelitian.</p></div></div>
+    <div className="realtime-separation-note glass-card"><BookOpen size={17} /><div><strong>Terpisah dari penelitian DBSCAN</strong><p>Informasi BMKG ini merupakan informasi pelengkap yang diperbarui melalui layanan informasi terkini. Data di halaman ini tidak digabungkan ke {datasetYearRange ? `dataset penelitian ${datasetYearRange}` : 'dataset penelitian aktif'}, tidak membentuk klaster, dan tidak digunakan dalam hasil analisis penelitian.</p></div></div>
     <div className="realtime-disclaimer"><AlertTriangle size={15} /><span>Informasi ini merupakan pelengkap, bukan pengganti arahan keselamatan. Untuk informasi resmi keselamatan dan peringatan tsunami, ikuti kanal resmi BMKG.</span></div>
   </div>;
 }

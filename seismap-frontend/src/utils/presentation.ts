@@ -272,3 +272,20 @@ function formatDateTime(value: string): string {
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
+
+function extractYear(value?: string | null): number | null {
+  if (!value) return null;
+  const match = value.trim().match(/^(\d{4})/);
+  if (match) return Number(match[1]);
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getUTCFullYear();
+}
+
+export function formatDatasetYearRange(
+  dataset?: { start_date?: string | null; end_date?: string | null } | null,
+): string | null {
+  const startYear = extractYear(dataset?.start_date);
+  const endYear = extractYear(dataset?.end_date);
+  if (startYear === null || endYear === null) return null;
+  return startYear === endYear ? String(startYear) : `${startYear}–${endYear}`;
+}
