@@ -63,7 +63,7 @@ export function AdminLayout() {
       />
     )}
 
-    <aside className={`admin-sidebar glass-panel ${isSidebarOpen ? 'drawer-open translate-x-0' : 'drawer-closed -translate-x-full lg:translate-x-0'}`}>
+    <aside className={`admin-sidebar glass-panel ${isSidebarOpen ? 'drawer-open' : 'drawer-closed'}`}>
       <div className="admin-sidebar-header">
         <NavLink to="/" className="brand-lockup sidebar-brand" onClick={() => setIsSidebarOpen(false)}>
           <span className="brand-mark"><Activity size={20} /></span>

@@ -165,6 +165,8 @@ button { color: inherit; }
   overscroll-behavior: contain;
   padding: 20px 14px 15px;
   border-radius: 19px;
+  /* Desktop: always visible, no transform */
+  transform: translateX(0);
 }
 .sidebar-brand { padding: 0 7px 25px; border-bottom: 1px solid rgba(185,218,245,.09); flex-shrink: 0; }
 .sidebar-caption { margin: 24px 10px 11px; color: #627d94; font-size: 8px; font-weight: 700; letter-spacing: .16em; flex-shrink: 0; }
@@ -245,8 +247,8 @@ button { color: inherit; }
   .admin-main-area { height: 100%; min-height: 0; flex: 1; overflow: hidden; }
   .admin-content { padding: 16px 14px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .admin-sidebar { position: fixed !important; top: 0 !important; bottom: 0 !important; left: 0 !important; width: 85vw !important; max-width: 270px !important; z-index: 1200 !important; height: 100% !important; height: 100dvh !important; background: #0b1a2b !important; border-right: 1px solid rgba(72, 215, 237, 0.2) !important; border-radius: 0 !important; box-shadow: 6px 0 28px rgba(0, 0, 0, 0.7) !important; overflow-y: auto !important; overscroll-behavior: contain !important; -webkit-overflow-scrolling: touch !important; transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1) !important; padding: 20px 14px 24px !important; display: flex !important; flex-direction: column !important; }
-  .admin-sidebar.drawer-closed, .admin-sidebar.-translate-x-full { transform: translateX(-100%) !important; pointer-events: none !important; visibility: hidden !important; }
-  .admin-sidebar.drawer-open, .admin-sidebar.translate-x-0 { transform: translateX(0) !important; pointer-events: auto !important; visibility: visible !important; }
+  .admin-sidebar.drawer-closed { transform: translateX(-100%) !important; pointer-events: none !important; visibility: hidden !important; }
+  .admin-sidebar.drawer-open { transform: translateX(0) !important; pointer-events: auto !important; visibility: visible !important; }
   .admin-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 16px; border-bottom: 1px solid rgba(185, 218, 245, 0.1); flex-shrink: 0; }
   .admin-sidebar-header .sidebar-brand { padding: 0; border-bottom: none; }
   .admin-sidebar-close-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); color: #9bb2c8; cursor: pointer; }
