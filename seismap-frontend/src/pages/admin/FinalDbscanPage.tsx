@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, Clock3, Database, ExternalLink,
   ListTodo, MapPinned, Play, RefreshCw, Workflow,
 } from 'lucide-react';
 import { getDatasets, getExperiments, getJob, getJobs, startFinalDbscan } from '../../api/services';
 import { JobLifecycleControls } from '../../components/JobLifecycleControls';
+import { ConfirmModal } from '../../components/admin/ConfirmModal';
 import { IS_PREVIEW_MODE } from '../../config/env';
 import { usePipeline } from '../../context/PipelineContext';
 import { useJobPolling } from '../../hooks/useJobPolling';
@@ -43,12 +44,31 @@ function persistStoredId(key: string, value: number | null): void {
 }
 
 export function FinalDbscanPage() {
+  const [searchParams] = useSearchParams();
+  const urlDatasetId = Number(searchParams.get('datasetId')) || null;
+  const urlJobId = Number(searchParams.get('jobId')) || null;
+  const urlExperimentId = Number(searchParams.get('experimentId')) || null;
+
   const datasets = useResource(getDatasets, []);
   const {
     selectedDatasetId, setSelectedDatasetId, parameterJobId, setParameterJobId,
   } = usePipeline();
-  const effectiveDatasetId = selectedDatasetId ?? datasets.data?.[0]?.id ?? null;
-  const effectiveParameterJobId = IS_PREVIEW_MODE ? (parameterJobId ?? 51) : parameterJobId;
+
+  // Initialize pipeline context from URL parameters if provided
+  useEffect(() => {
+    if (urlDatasetId && urlDatasetId !== selectedDatasetId) {
+      setSelectedDatasetId(urlDatasetId);
+    }
+    if (urlJobId && urlJobId !== parameterJobId) {
+      setParameterJobId(urlJobId);
+    }
+    if (urlExperimentId) {
+      setExperimentId(urlExperimentId);
+    }
+  }, [urlDatasetId, urlJobId, urlExperimentId]);
+
+  const effectiveDatasetId = selectedDatasetId ?? urlDatasetId ?? datasets.data?.[0]?.id ?? null;
+  const effectiveParameterJobId = IS_PREVIEW_MODE ? (parameterJobId ?? urlJobId ?? 51) : (parameterJobId ?? urlJobId);
 
   const [availableJobs, setAvailableJobs] = useState<ProcessingJob[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
@@ -61,9 +81,10 @@ export function FinalDbscanPage() {
   const [experiments, setExperiments] = useState<ParameterExperiment[]>([]);
   const [sourceLoading, setSourceLoading] = useState(false);
   const [sourceError, setSourceError] = useState<string | null>(null);
-  const [experimentId, setExperimentId] = useState<number | null>(null);
+  const [experimentId, setExperimentId] = useState<number | null>(() => urlExperimentId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showClearModal, setShowClearModal] = useState(false);
   const [jobId, setJobId] = useState<number | null>(() => readStoredId(FINAL_JOB_STORAGE_KEY));
   const [runId, setRunId] = useState<number | null>(() => readStoredId(FINAL_RUN_STORAGE_KEY));
   const jobState = useJobPolling(jobId);
@@ -247,15 +268,19 @@ export function FinalDbscanPage() {
     [matchingExperiments, experimentId],
   );
 
-  // Auto-select top recommended/valid experiment on initial load if none selected
+  // Auto-select top recommended/valid experiment on initial load if none selected, or URL experiment
   useEffect(() => {
+    if (urlExperimentId && sortedExperiments.some((item) => item.id === urlExperimentId)) {
+      setExperimentId(urlExperimentId);
+      return;
+    }
     if (!experimentId && sortedExperiments.length > 0) {
       const topChoice = sortedExperiments.find((item) => item.is_valid === true) ?? sortedExperiments[0];
       if (topChoice) {
         setExperimentId(topChoice.id);
       }
     }
-  }, [experimentId, sortedExperiments]);
+  }, [experimentId, sortedExperiments, urlExperimentId]);
 
   const currentFinalJob = jobState.job?.id === jobId ? jobState.job : null;
   const activeFinalJob = Boolean(currentFinalJob && ACTIVE_JOB_STATUSES.has(currentFinalJob.status));
@@ -290,13 +315,12 @@ export function FinalDbscanPage() {
     setError(null);
   };
 
-  const clearFinalJobTracking = () => {
-    const confirmed = window.confirm('Tindakan ini hanya menghapus ID pemantauan dari tab browser. Proses yang berjalan di server TIDAK dibatalkan. Lanjutkan hanya jika Anda sudah memastikan tidak ada Klasterisasi Final yang masih berjalan di Manajemen Proses.');
-    if (!confirmed) return;
+  const handleConfirmClearTracking = () => {
     setJobId(null);
     setRunId(null);
     persistStoredId(FINAL_JOB_STORAGE_KEY, null);
     persistStoredId(FINAL_RUN_STORAGE_KEY, null);
+    setShowClearModal(false);
   };
 
   const submit = async (event: FormEvent) => {
@@ -475,7 +499,7 @@ export function FinalDbscanPage() {
               <ul>
                 {selectedExperiment.invalid_reasons && selectedExperiment.invalid_reasons.length > 0 ? (
                   selectedExperiment.invalid_reasons.map((reason, idx) => (
-                    <li key={idx}>{formatInvalidReason(reason)}</li>
+                    <li key={idx}>{formatInvalidReason(reason, sourceJob?.parameter_search_metadata?.validity_thresholds)}</li>
                   ))
                 ) : (
                   <li>Parameter eksperimen berada di luar ambang batas klaster atau noise yang diperbolehkan.</li>
@@ -622,7 +646,7 @@ export function FinalDbscanPage() {
     <GlassCard title="Kemajuan DBSCAN Final" subtitle="Status proses dipulihkan otomatis. Proses yang masih berjalan dipantau; memuat ulang halaman tidak menghapus pemantauan pada tab ini.">
       {jobId ? jobState.error && !currentFinalJob ? <div className="final-job-error-state">
         <StatePanel type="error" title="Status proses tidak tersedia" message={jobState.error} action={<div className="final-job-error-actions"><button className="button button-secondary" type="button" onClick={jobState.reload}><RefreshCw size={13} /> Coba lagi</button><Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> Buka Manajemen Proses</Link></div>} />
-        <button className="text-button" type="button" onClick={clearFinalJobTracking}>Hentikan pemantauan pada tab ini <ExternalLink size={12} /></button>
+        <button className="text-button" type="button" onClick={() => setShowClearModal(true)}>Hentikan pemantauan pada tab ini <ExternalLink size={12} /></button>
       </div> : currentFinalJob ? <div className="job-progress">
         <div className="job-progress-head"><div><span className="eyebrow">PROSES #{jobId} · EKSEKUSI #{resolvedRunId ?? '—'}</span><h3>Klasterisasi Final</h3></div><StatusBadge status={currentFinalJob.status} /></div>
         <div className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, currentFinalJob.progress || 0))}%` }} /></div>
@@ -638,5 +662,26 @@ export function FinalDbscanPage() {
     </GlassCard>
 
     <div className="admin-note"><Clock3 size={16} /><span>DBSCAN Final tidak mengulang Pencarian Parameter. Gunakan hasil eksperimen yang sudah tersimpan; status proses dan hasil eksekusi tetap dikelola oleh sistem.</span></div>
+
+    <ConfirmModal
+      isOpen={showClearModal}
+      variant="danger"
+      title="Hentikan Pemantauan di Tab Ini"
+      icon={<AlertTriangle size={22} />}
+      confirmLabel="Ya, Hentikan Pemantauan"
+      cancelLabel="Batal"
+      onCancel={() => setShowClearModal(false)}
+      onConfirm={handleConfirmClearTracking}
+      message={
+        <div>
+          <p>
+            Tindakan ini hanya menghapus ID pemantauan proses dari tab browser Anda saat ini.
+          </p>
+          <p style={{ marginTop: '8px', color: '#ffb3c0', fontSize: '12px' }}>
+            Proses yang berjalan di server <strong>TIDAK dibatalkan</strong>. Lanjutkan hanya jika Anda sudah memastikan tidak ada Klasterisasi Final yang masih berjalan di Manajemen Proses.
+          </p>
+        </div>
+      }
+    />
   </div>;
 }

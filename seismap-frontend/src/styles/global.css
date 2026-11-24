@@ -3459,3 +3459,278 @@ body { overflow-x: hidden; color: var(--text); font-size: 14px; line-height: 1.5
     pointer-events: auto !important;
   }
 }
+
+/* ==========================================================================
+   Admin UI/UX Enhancements: ConfirmModal, Status Pulsing, Responsive Tables
+   ========================================================================== */
+
+/* ConfirmModal Styles */
+.confirm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(3, 10, 18, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: modalFadeIn 140ms ease-out;
+}
+
+.confirm-modal-box {
+  width: 100%;
+  max-width: 460px;
+  background: rgba(13, 29, 47, 0.95);
+  border: 1px solid rgba(185, 218, 245, 0.16);
+  border-radius: var(--radius-lg, 18px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 22px;
+  color: var(--text-primary, #eef6ff);
+  animation: modalScaleUp 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.confirm-modal-primary {
+  border-color: rgba(72, 215, 237, 0.35);
+}
+.confirm-modal-primary .confirm-modal-icon-wrapper {
+  background: rgba(72, 215, 237, 0.12);
+  color: var(--cyan, #48d7ed);
+}
+
+.confirm-modal-danger {
+  border-color: rgba(251, 113, 133, 0.35);
+}
+.confirm-modal-danger .confirm-modal-icon-wrapper {
+  background: rgba(251, 113, 133, 0.12);
+  color: var(--danger, #fb7185);
+}
+
+.confirm-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.confirm-modal-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm, 10px);
+  flex-shrink: 0;
+}
+
+.confirm-modal-heading {
+  flex: 1;
+}
+
+.confirm-modal-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f1f7fc;
+  letter-spacing: -0.01em;
+}
+
+.confirm-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--muted, #9aadc1);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.confirm-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.confirm-modal-body {
+  margin: 16px 0 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #9cb1c4;
+}
+
+.confirm-modal-body p {
+  margin: 0 0 8px;
+}
+
+.confirm-modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.confirm-modal-body strong {
+  color: #e5f1fb;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Status Running Pulsing Dot & Colors */
+.status-running {
+  color: #7ce7f5;
+  border-color: rgba(72, 215, 237, 0.25);
+  background: rgba(72, 215, 237, 0.08);
+}
+
+.status-running i {
+  background: var(--cyan, #48d7ed);
+}
+
+.status-badge.status-running i,
+.status-badge.status-warning i {
+  animation: statusDotPulse 1.6s infinite ease-in-out;
+}
+
+@keyframes statusDotPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(72, 215, 237, 0.6);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+    box-shadow: 0 0 0 4px rgba(72, 215, 237, 0);
+  }
+}
+
+/* Live Combination Estimation Badge on Parameter Search */
+.combination-estimate-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(72, 215, 237, 0.08);
+  border: 1px solid rgba(72, 215, 237, 0.22);
+  border-radius: var(--radius-sm, 10px);
+  color: #bdecf4;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.combination-estimate-badge svg {
+  color: var(--cyan, #48d7ed);
+  flex-shrink: 0;
+}
+
+.combination-estimate-badge strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Mobile Responsive Table Scroll Enhancements */
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+@media (max-width: 768px) {
+  .table-scroll {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+  }
+  .data-table {
+    min-width: 580px;
+  }
+}
+
+/* Active Publication Card on Admin Dashboard */
+.active-publication-card {
+  border-color: rgba(72, 215, 237, 0.28);
+  background: radial-gradient(ellipse at 10% 0%, rgba(72, 215, 237, 0.12), transparent 45%), rgba(11, 24, 40, 0.85);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), 0 0 20px rgba(72, 215, 237, 0.06);
+}
+
+.active-publication-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.active-publication-header .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cyan, #48d7ed);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.active-publication-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.active-publication-item {
+  padding: 12px;
+  background: rgba(6, 17, 29, 0.55);
+  border: 1px solid rgba(185, 218, 245, 0.1);
+  border-radius: var(--radius-sm, 10px);
+}
+
+.active-publication-item span {
+  display: block;
+  font-size: 10px;
+  color: var(--muted, #9aadc1);
+  margin-bottom: 4px;
+}
+
+.active-publication-item strong {
+  display: block;
+  font-size: 15px;
+  color: #f0f7fe;
+  font-variant-numeric: tabular-nums;
+}
+
+.active-publication-item small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted, #9aadc1);
+  margin-left: 2px;
+}
+
+.active-publication-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+

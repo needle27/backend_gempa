@@ -8,6 +8,7 @@ import {
   Info,
   Play,
   SlidersHorizontal,
+  Sparkles,
   Workflow,
 } from 'lucide-react';
 import { ElbowAnalysisPanel } from '../../components/ElbowAnalysisPanel';
@@ -51,7 +52,7 @@ export function ParameterSearchPage() {
   const navigate = useNavigate();
   const datasets = useResource(getDatasets, []);
   const { selectedDatasetId, setSelectedDatasetId, parameterJobId, setParameterJobId } = usePipeline();
-  const [minSamplesText, setMinSamplesText] = useState('75, 100, 125, 150');
+  const [minSamplesText, setMinSamplesText] = useState('100, 150, 195, 200');
   const [sensitivityText, setSensitivityText] = useState('-20, -10, 0, 10, 20');
   const [epsCandidatesText, setEpsCandidatesText] = useState('17.5, 22.5, 27.5, 32.5, 35.0, 37.5');
   const [useDefaultGrid, setUseDefaultGrid] = useState(true);
@@ -61,6 +62,29 @@ export function ParameterSearchPage() {
   const [experimentError, setExperimentError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<'ALL' | 'VALID' | 'RECOMMENDED'>('ALL');
   const [sortField, setSortField] = useState<'DEFAULT' | 'SCORE' | 'SILHOUETTE' | 'EPS' | 'MINPTS'>('DEFAULT');
+
+  const parsedMinSamples = useMemo(() => {
+    return minSamplesText
+      .split(/[\s,]+/)
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isInteger(n) && n >= 2);
+  }, [minSamplesText]);
+
+  const estimatedEpsCount = useMemo(() => {
+    const sensitivities = sensitivityText
+      .split(/[\s,]+/)
+      .map((s) => Number(s.trim()))
+      .filter((n) => !Number.isNaN(n));
+    const explicitEps = epsCandidatesText
+      .split(/[\s,]+/)
+      .map((s) => Number(s.trim()))
+      .filter((n) => !Number.isNaN(n) && n > 0);
+    const kneeSensCount = sensitivities.length > 0 ? sensitivities.length : 5;
+    const defaultGridCount = useDefaultGrid ? 10 : 0;
+    return Math.max(1, kneeSensCount + defaultGridCount + explicitEps.length);
+  }, [sensitivityText, epsCandidatesText, useDefaultGrid]);
+
+  const estimatedCombinations = parsedMinSamples.length * estimatedEpsCount;
 
   const effectiveDatasetId = selectedDatasetId ?? datasets.data?.[0]?.id ?? null;
   const effectiveDatasetName = datasets.data?.find((dataset) => dataset.id === effectiveDatasetId)?.dataset_name;
@@ -235,7 +259,7 @@ export function ParameterSearchPage() {
               <input
                 value={minSamplesText}
                 onChange={(event) => setMinSamplesText(event.target.value)}
-                placeholder="Contoh format: 75, 100, 125, 150"
+                placeholder="Contoh format: 100, 150, 195, 200"
               />
             </label>
             <label>
@@ -262,6 +286,12 @@ export function ParameterSearchPage() {
               />{' '}
               Gunakan default epsilon grid backend (10, 15, 20, 25, 30, 40, 50, 60, 75, 100 km)
             </label>
+            <div className="combination-estimate-badge">
+              <Sparkles size={14} />
+              <span>
+                Estimasi Beban: <strong>{parsedMinSamples.length} MinPts</strong> × <strong>~{estimatedEpsCount} Epsilon</strong> = <strong>~{estimatedCombinations} kombinasi evaluasi</strong>
+              </span>
+            </div>
             <div className="inline-notice">
               <SlidersHorizontal size={15} /> Backend menggabungkan kandidat dari knee sensitivity, epsilon eksplisit,
               dan default grid yang diaktifkan. Epsilon dibulatkan dan dideduplikasi oleh backend; frontend tidak
@@ -426,10 +456,10 @@ export function ParameterSearchPage() {
                   onClick={() => {
                     if (effectiveDatasetId) setSelectedDatasetId(effectiveDatasetId);
                     setParameterJobId(currentParameterJob.id);
-                    navigate('/admin/dbscan-final');
+                    navigate(`/admin/dbscan-final?datasetId=${effectiveDatasetId}&jobId=${currentParameterJob.id}&experimentId=${selectedExp.id}`);
                   }}
                 >
-                  <Workflow size={15} /> Lanjut ke DBSCAN Final <ArrowRight size={14} />
+                  <Workflow size={15} /> Gunakan di DBSCAN Final <ArrowRight size={14} />
                 </PrimaryButton>
               </div>
             </GlassCard>
@@ -667,6 +697,7 @@ export function ParameterSearchPage() {
                     <th>Skor Rekomendasi</th>
                     <th>Validitas</th>
                     <th>Rekomendasi</th>
+                    <th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -717,7 +748,7 @@ export function ParameterSearchPage() {
                               <StatusBadge status="INVALID" />
                               <small className="invalid-subtext">
                                 {item.invalid_reasons && item.invalid_reasons.length > 0
-                                  ? item.invalid_reasons.map(formatInvalidReason).join('; ')
+                                  ? item.invalid_reasons.map((r) => formatInvalidReason(r, jobMetadata?.validity_thresholds)).join('; ')
                                   : item.invalid_reason || 'Tidak memenuhi ambang batas'}
                               </small>
                             </div>
@@ -726,6 +757,24 @@ export function ParameterSearchPage() {
                         <td>
                           {item.is_recommended ? (
                             <span className="recommended-label">Direkomendasikan</span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td>
+                          {item.is_valid ? (
+                            <button
+                              className="text-button"
+                              type="button"
+                              style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              onClick={() => {
+                                if (effectiveDatasetId) setSelectedDatasetId(effectiveDatasetId);
+                                if (currentParameterJob) setParameterJobId(currentParameterJob.id);
+                                navigate(`/admin/dbscan-final?datasetId=${effectiveDatasetId}&jobId=${currentParameterJob?.id ?? ''}&experimentId=${item.id}`);
+                              }}
+                            >
+                              Gunakan di DBSCAN Final <ArrowRight size={12} />
+                            </button>
                           ) : (
                             '—'
                           )}

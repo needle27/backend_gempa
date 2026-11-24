@@ -25,12 +25,14 @@ export function StatusBadge({ status }: { status: string }) {
   const normalized = status.toUpperCase();
   const tone = ['SUCCESS', 'READY', 'PROCESSED', 'ACTIVE', 'VALID', 'RECOMMENDED'].includes(normalized)
     ? 'success'
-    : ['FAILED', 'CANCELLED', 'ERROR', 'INVALID', 'NO_VALID_EXPERIMENT'].includes(normalized)
+    : ['FAILED', 'CANCELLED', 'STOPPED', 'STOP_REQUESTED', 'ERROR', 'INVALID', 'NO_VALID_EXPERIMENT'].includes(normalized)
       ? 'danger'
-      : ['RUNNING', 'QUEUED', 'CLUSTERING', 'PAUSE_REQUESTED', 'PAUSED', 'STOP_REQUESTED'].includes(normalized)
-        ? 'warning'
-        : 'neutral';
-  return <span className={`status-badge status-${tone}`}><i />{statusLabel(status)}</span>;
+      : ['RUNNING', 'CLUSTERING'].includes(normalized)
+        ? 'running'
+        : ['QUEUED', 'PENDING', 'PAUSE_REQUESTED', 'PAUSED'].includes(normalized)
+          ? 'warning'
+          : 'neutral';
+  return <span className={`status-badge status-${tone}`} data-status={normalized}><i />{statusLabel(status)}</span>;
 }
 
 export function PreviewBanner() {

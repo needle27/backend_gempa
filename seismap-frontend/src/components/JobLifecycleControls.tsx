@@ -6,6 +6,7 @@ import { ApiError } from '../types/api';
 import type { ProcessingJob } from '../types/domain';
 import { formatDate } from './ui';
 import { friendlyErrorMessage } from '../utils/presentation';
+import { ConfirmModal } from './admin/ConfirmModal';
 
 interface JobLifecycleControlsProps {
   job: ProcessingJob;
@@ -50,9 +51,10 @@ export function JobLifecycleControls({ job, onJobChanged, onRestarted }: JobLife
   const showPanel = isQueuedOrRunning || isPaused || isPausing || isStopping || canRestartByStatus;
   if (!showPanel) return null;
 
+  const [showStopModal, setShowStopModal] = useState(false);
+
   const handleAction = async (action: JobLifecycleAction | 'restart') => {
     if (busyAction) return;
-    if (action === 'stop' && !window.confirm('Hentikan proses ini secara aman? Proses tidak dapat dilanjutkan setelah statusnya menjadi Dibatalkan.')) return;
     setBusyAction(action);
     setError(null);
     setNotice(null);
@@ -101,7 +103,7 @@ export function JobLifecycleControls({ job, onJobChanged, onRestarted }: JobLife
       <button className="button button-secondary" type="button" disabled={Boolean(busyAction)} onClick={() => void handleAction('pause')}>
         {busyAction === 'pause' ? <LoaderCircle className="spin" size={14} /> : <Pause size={14} />} Jeda Proses
       </button>
-      <button className="button button-danger" type="button" disabled={Boolean(busyAction)} onClick={() => void handleAction('stop')}>
+      <button className="button button-danger" type="button" disabled={Boolean(busyAction)} onClick={() => setShowStopModal(true)}>
         {busyAction === 'stop' ? <LoaderCircle className="spin" size={14} /> : <Square size={13} />} Hentikan Proses
       </button>
     </div>}
@@ -114,7 +116,7 @@ export function JobLifecycleControls({ job, onJobChanged, onRestarted }: JobLife
         <button className="button button-primary" type="button" disabled={Boolean(busyAction)} onClick={() => void handleAction('resume')}>
           {busyAction === 'resume' ? <LoaderCircle className="spin" size={14} /> : <Play size={14} />} Lanjutkan
         </button>
-        <button className="button button-danger" type="button" disabled={Boolean(busyAction)} onClick={() => void handleAction('stop')}>
+        <button className="button button-danger" type="button" disabled={Boolean(busyAction)} onClick={() => setShowStopModal(true)}>
           {busyAction === 'stop' ? <LoaderCircle className="spin" size={14} /> : <Square size={13} />} Hentikan Proses
         </button>
       </div>
@@ -138,5 +140,29 @@ export function JobLifecycleControls({ job, onJobChanged, onRestarted }: JobLife
 
     {notice && <div className="job-lifecycle-feedback job-lifecycle-feedback-success">{notice}</div>}
     {error && <div className="job-lifecycle-feedback job-lifecycle-feedback-error">{error}</div>}
+
+    <ConfirmModal
+      isOpen={showStopModal}
+      variant="danger"
+      title="Konfirmasi Penghentian Proses"
+      confirmLabel="Ya, Hentikan Proses"
+      cancelLabel="Batal"
+      loading={busyAction === 'stop'}
+      onCancel={() => setShowStopModal(false)}
+      onConfirm={() => {
+        setShowStopModal(false);
+        void handleAction('stop');
+      }}
+      message={
+        <div>
+          <p>
+            Hentikan proses <strong>#{job.id}</strong> ({job.job_type === 'PARAMETER_SEARCH' ? 'Pencarian Parameter' : 'DBSCAN Final'}) secara aman?
+          </p>
+          <p style={{ marginTop: '8px', color: '#ffb3c0', fontSize: '12px' }}>
+            Perhatian: Proses tidak dapat dilanjutkan kembali setelah statusnya menjadi Dihentikan/Dibatalkan.
+          </p>
+        </div>
+      }
+    />
   </section>;
 }

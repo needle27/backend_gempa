@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { AlertCircle, CheckCircle2, FileWarning, Info, UploadCloud } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertCircle, ArrowRight, CheckCircle2, FileWarning, Info, UploadCloud } from 'lucide-react';
 import { getDatasets, validateDataset } from '../../api/services';
 import { IS_PREVIEW_MODE } from '../../config/env';
 import { GlassCard, PageHeader, PrimaryButton, SimulationTag, StatePanel, StatusBadge, formatNumber, RecordDetails } from '../../components/ui';
@@ -51,6 +52,13 @@ export function ValidationPage() {
         {error && <div className="form-error"><AlertCircle size={15} />{error}</div>}
         {result && <div className="validation-result">
           <div className="success-panel"><CheckCircle2 size={18} /><div><strong>{result.valid === true ? 'Berkas memenuhi aturan pemeriksaan' : 'Hasil pemeriksaan diterima'}</strong><span>{result.filename || file?.name || 'CSV'} · {formatNumber(result.row_count)} baris · Berkas disimpan: {result.persisted ? 'Ya' : 'Tidak'}</span></div></div>
+          {result.valid === true && (
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Link to="/admin/dataset" className="button button-secondary">
+                Lanjut Unggah ke Dataset <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
           <div className="validation-result-grid"><div><span>Dataset disimpan</span><strong>Tidak — hanya pemeriksaan</strong></div></div>
           <div className="required-columns"><span>Kolom yang diperiksa</span><div>{(result.required_columns || []).map((column) => <code key={column}>{({ event_id: 'ID kejadian', tanggal: 'Tanggal', latitude: 'Latitude', longitude: 'Longitude', magnitude: 'Magnitudo', kedalaman: 'Kedalaman', lokasi: 'Lokasi' } as Record<string, string>)[column] || column}</code>)}</div></div>
           {Object.keys(result.rules || {}).length > 0 && <details className="detail-disclosure"><summary>Rincian aturan pemeriksaan</summary><RecordDetails record={result.rules || {}} /></details>}

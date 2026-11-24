@@ -1,12 +1,36 @@
 const STATUS_LABELS: Record<string, string> = {
-  SUCCESS: 'Berhasil', READY: 'Siap digunakan', PROCESSED: 'Sudah diproses', ACTIVE: 'Aktif',
-  VALID: 'Valid', RECOMMENDED: 'Direkomendasikan', FAILED: 'Gagal', CANCELLED: 'Dibatalkan',
-  ERROR: 'Kesalahan', INVALID: 'Tidak valid', RUNNING: 'Sedang berjalan', QUEUED: 'Dalam antrean',
-  PAUSE_REQUESTED: 'Sedang menjeda', PAUSED: 'Dijeda', STOP_REQUESTED: 'Sedang menghentikan',
-  CLUSTERING: 'Sedang membentuk klaster', DRAFT: 'Draf', ARCHIVED: 'Diarsipkan', STALE: 'Data tersimpan sementara',
-  HIT: 'Tersedia di cache', MISS: 'Diambil dari sumber', PROCESSING: 'Sedang diproses', PENDING: 'Menunggu',
-  UPLOADING: 'Sedang diunggah', VALIDATING: 'Sedang diperiksa', REJECTED: 'Ditolak', AVAILABLE: 'Tersedia', NO_ACTIVE_RUN: 'Belum ada hasil aktif',
-  NO_VALID_EXPERIMENT: 'Tidak ada eksperimen valid', HISTORIS: 'Data historis',
+  SUCCESS: 'Berhasil',
+  READY: 'Siap',
+  PROCESSED: 'Siap',
+  ACTIVE: 'Aktif',
+  VALID: 'Valid',
+  RECOMMENDED: 'Direkomendasikan',
+  FAILED: 'Gagal',
+  CANCELLED: 'Dihentikan',
+  STOPPED: 'Dihentikan',
+  STOP_REQUESTED: 'Dihentikan',
+  ERROR: 'Kesalahan',
+  INVALID: 'Tidak Valid',
+  RUNNING: 'Berjalan',
+  QUEUED: 'Antrean',
+  PENDING: 'Antrean',
+  PAUSE_REQUESTED: 'Dijeda',
+  PAUSED: 'Dijeda',
+  RESUMING: 'Melanjutkan',
+  CLUSTERING: 'Membentuk klaster',
+  DRAFT: 'Draf',
+  ARCHIVED: 'Diarsipkan',
+  STALE: 'Data tersimpan sementara',
+  HIT: 'Tersedia di cache',
+  MISS: 'Diambil dari sumber',
+  PROCESSING: 'Sedang diproses',
+  UPLOADING: 'Sedang diunggah',
+  VALIDATING: 'Sedang diperiksa',
+  REJECTED: 'Ditolak',
+  AVAILABLE: 'Tersedia',
+  NO_ACTIVE_RUN: 'Belum ada hasil aktif',
+  NO_VALID_EXPERIMENT: 'Tidak ada eksperimen valid',
+  HISTORIS: 'Data historis',
 };
 
 const JOB_TYPE_LABELS: Record<string, string> = {
@@ -91,17 +115,37 @@ const INVALID_REASON_LABELS: Record<string, string> = {
   largest_cluster_ratio_exceeds_max: 'Dominasi klaster terbesar terlalu tinggi',
 };
 
-export function formatInvalidReason(reason: string): string {
+export interface ValidityThresholds {
+  min_clusters?: number;
+  max_clusters?: number;
+  max_noise_percentage?: number;
+  max_largest_cluster_ratio?: number;
+}
+
+export function formatInvalidReason(reason: string, validityThresholds?: ValidityThresholds | null): string {
   if (!reason) return '—';
   const trimmed = reason.trim();
   // Cek apakah ada detail dalam kurung, misal: "NOISE_PERCENTAGE_ABOVE_MAXIMUM (74.9% > 40.0%)"
   const match = trimmed.match(/^([A-Za-z0-9_]+)(?:\s*\((.*)\))?$/);
   if (match) {
     const [, code, details] = match;
-    const baseLabel =
+    let baseLabel =
       INVALID_REASON_LABELS[code] ||
       INVALID_REASON_LABELS[code.toUpperCase()] ||
       humanizeCode(code);
+
+    if (validityThresholds) {
+      if ((code === 'CLUSTER_COUNT_BELOW_MINIMUM' || code === 'min_clusters_not_met') && validityThresholds.min_clusters != null) {
+        baseLabel = `Jumlah klaster di bawah batas minimum (${validityThresholds.min_clusters})`;
+      } else if ((code === 'CLUSTER_COUNT_ABOVE_MAXIMUM' || code === 'max_clusters_exceeded') && validityThresholds.max_clusters != null) {
+        baseLabel = `Jumlah klaster melebihi batas maksimum (${validityThresholds.max_clusters})`;
+      } else if ((code === 'NOISE_PERCENTAGE_ABOVE_MAXIMUM' || code === 'noise_percentage_exceeds_max') && validityThresholds.max_noise_percentage != null) {
+        baseLabel = `Persentase noise melebihi ambang batas (${validityThresholds.max_noise_percentage}%)`;
+      } else if ((code === 'LARGEST_CLUSTER_RATIO_ABOVE_MAXIMUM' || code === 'largest_cluster_ratio_exceeds_max') && validityThresholds.max_largest_cluster_ratio != null) {
+        baseLabel = `Dominasi klaster terbesar melebihi ambang batas (${Math.round(validityThresholds.max_largest_cluster_ratio * 100)}%)`;
+      }
+    }
+
     return details ? `${baseLabel} (${details})` : baseLabel;
   }
   return INVALID_REASON_LABELS[trimmed] || trimmed;

@@ -6,7 +6,7 @@ import { IS_PREVIEW_MODE } from '../config/env';
 import { PreviewBanner } from '../components/ui';
 
 const menu = [
-  { to: '/admin', label: 'Dasbor', icon: Gauge, end: true },
+  { to: '/admin', label: 'Dashboard', icon: Gauge, end: true },
   { to: '/admin/dataset', label: 'Dataset', icon: Database },
   { to: '/admin/validasi', label: 'Validasi', icon: ClipboardCheck },
   { to: '/admin/parameter', label: 'Pencarian Parameter', icon: SlidersHorizontal },
