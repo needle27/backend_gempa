@@ -387,7 +387,7 @@ export function FinalDbscanPage() {
     <PageHeader
       eyebrow="ADMIN / KLASTERISASI FINAL"
       title="DBSCAN Final"
-      description="Pilih dataset, proses Pencarian Parameter yang berhasil, lalu eksperimen yang valid langsung di halaman ini. Klasterisasi final dijalankan oleh sistem."
+      description="Jalankan klasterisasi final dari eksperimen Pencarian Parameter yang valid."
       action={<SimulationTag />}
     />
 
@@ -401,7 +401,7 @@ export function FinalDbscanPage() {
     </div>
 
     <div className="final-layout">
-      <GlassCard title="Konfigurasi DBSCAN Final" subtitle="Parameter klasterisasi diambil dari eksperimen terpilih. Epsilon, MinPts, dan batas kedalaman tidak perlu diisi secara manual.">
+      <GlassCard title="Konfigurasi DBSCAN Final" subtitle="Parameter Epsilon dan MinPts diambil otomatis dari eksperimen terpilih.">
         <form className="stack-form" onSubmit={submit}>
           <label>Dataset
             <select
@@ -447,7 +447,6 @@ export function FinalDbscanPage() {
               <button className="button button-ghost" type="button" disabled={jobsLoading || !effectiveDatasetId} onClick={() => setJobsReloadKey((value) => value + 1)}>
                 <RefreshCw size={13} /> Muat ulang
               </button>
-              <Link className="button button-ghost" to="/admin/jobs">Semua proses <ArrowRight size={13} /></Link>
             </div>
           </div>
 
@@ -469,8 +468,7 @@ export function FinalDbscanPage() {
 
           {sourceLoading ? <StatePanel type="loading" title="Memeriksa proses sumber" message="Memastikan proses merupakan Pencarian Parameter yang berhasil dan berasal dari dataset yang dipilih." />
             : sourceError ? <StatePanel type="error" title="Proses sumber belum dapat digunakan" message={sourceError} action={<Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> Buka Manajemen Proses</Link>} />
-              : !effectiveParameterJobId ? <StatePanel type="info" title="Pilih Proses Pencarian Parameter" message="Pilih salah satu proses yang berhasil pada daftar di atas. Hasil eksperimennya akan dimuat langsung di halaman ini." />
-                : sourceJob && <div className="final-source-verified"><CheckCircle2 size={15} /><span>Proses sumber terverifikasi: Pencarian Parameter berhasil dan dataset sesuai.</span><StatusBadge status={sourceJob.status} /></div>}
+              : sourceJob && <div className="final-source-verified"><CheckCircle2 size={15} /><span>Proses sumber terverifikasi: Pencarian Parameter berhasil dan dataset sesuai.</span><StatusBadge status={sourceJob.status} /></div>}
 
           <label>Eksperimen yang akan dijalankan
             <select
@@ -650,7 +648,7 @@ export function FinalDbscanPage() {
       </GlassCard>
     </div>
 
-    <GlassCard title="Kemajuan DBSCAN Final" subtitle="Status proses dipulihkan otomatis. Proses yang masih berjalan dipantau; memuat ulang halaman tidak menghapus pemantauan pada tab ini.">
+    <GlassCard title="Kemajuan DBSCAN Final" subtitle="Pantau progres eksekusi secara langsung.">
       {jobId ? jobState.error && !currentFinalJob ? <div className="final-job-error-state">
         <StatePanel type="error" title="Status proses tidak tersedia" message={jobState.error} action={<div className="final-job-error-actions"><button className="button button-secondary" type="button" onClick={jobState.reload}><RefreshCw size={13} /> Coba lagi</button><Link className="button button-secondary" to="/admin/jobs"><ListTodo size={14} /> Buka Manajemen Proses</Link></div>} />
         <button className="text-button" type="button" onClick={() => setShowClearModal(true)}>Hentikan pemantauan pada tab ini <ExternalLink size={12} /></button>
@@ -667,8 +665,6 @@ export function FinalDbscanPage() {
       </div> : <StatePanel type="loading" title="Memulihkan status proses" message="Mengambil status proses terakhir." />
         : <StatePanel type="info" title="Belum ada proses DBSCAN Final" message="Setelah permintaan diterima, status dan progres akan ditampilkan serta disimpan agar dapat dipulihkan setelah halaman dimuat ulang." />}
     </GlassCard>
-
-    <div className="admin-note"><Clock3 size={16} /><span>DBSCAN Final tidak mengulang Pencarian Parameter. Gunakan hasil eksperimen yang sudah tersimpan; status proses dan hasil eksekusi tetap dikelola oleh sistem.</span></div>
 
     <ConfirmModal
       isOpen={showClearModal}

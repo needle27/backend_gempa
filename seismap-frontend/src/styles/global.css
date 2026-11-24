@@ -469,6 +469,8 @@ input::placeholder, select:invalid { color: #637c92; }
 .required-columns > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .required-columns code { padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.04); color: #d5e7f6; font-size: 11px; }
 .detail-disclosure summary { color: var(--cyan); cursor: pointer; font-size: 12px; }
+.requirement-list code { padding: 1px 5px; border-radius: 5px; background: rgba(72,215,237,.08); color: #9be2eb; font-size: 0.92em; }
+.validation-rules-card.is-collapsed .card-heading { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 @media (max-width: 850px) { .audit-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .audit-filter-grid, .validation-result-grid { grid-template-columns: 1fr; } .audit-filter-wide { grid-column: auto; } .audit-pagination { align-items: flex-start; flex-direction: column; } }
 
@@ -4207,6 +4209,36 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
 .detail-item strong {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.run-id-cell {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.webgis-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(72, 201, 167, 0.42);
+  background: rgba(72, 201, 167, 0.14);
+  color: #8af0cb;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.webgis-active-badge i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4dd1a5;
+  box-shadow: 0 0 8px rgba(77, 209, 165, 0.75);
 }
 
 

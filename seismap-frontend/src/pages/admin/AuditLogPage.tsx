@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { ClipboardList, Filter, RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import { ClipboardList, Filter, RefreshCw, Search } from 'lucide-react';
 import { getAuditLogs, type AuditLogFilters } from '../../api/services';
 import { GlassCard, PageHeader, SimulationTag, StatePanel, formatDate, formatNumber, RecordDetails } from '../../components/ui';
 import { useResource } from '../../hooks/useResource';
@@ -73,29 +73,27 @@ export function AuditLogPage() {
   };
 
   return <div className="page-stack">
-    <PageHeader eyebrow="ADMIN / KEAMANAN & JEJAK AKTIVITAS" title="Log Aktivitas" description="Catatan tindakan yang dilakukan pada aplikasi. Catatan ini hanya dapat dilihat, dengan penyaringan dan pembagian halaman." action={<SimulationTag />} />
-    <div className="validation-callout"><ShieldCheck size={18} /><div><strong>Catatan aktivitas bersifat permanen dan tidak dapat diubah melalui aplikasi.</strong><span>Pemeriksaan CSV juga tercatat sebagai aktivitas, meskipun berkas yang diperiksa tidak disimpan sebagai dataset.</span></div></div>
+    <PageHeader eyebrow="ADMIN / KEAMANAN & JEJAK AKTIVITAS" title="Log Aktivitas" description="Riwayat aktivitas pengguna dan sistem secara permanen." action={<SimulationTag />} />
 
     <GlassCard
       className="audit-filter-card"
-      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Filter size={16} /> Filter aktivitas</span>}
-      subtitle="Saring catatan berdasarkan kata kunci, tindakan, objek, pengguna, atau waktu."
-      action={<button className="button button-secondary" type="button" onClick={clearFilters}>Hapus filter</button>}
+      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Filter size={16} /> Filter Aktivitas</span>}
+      action={<button className="button button-secondary" type="button" onClick={clearFilters}>Reset Filter</button>}
     >
       <form className="audit-filter-grid" onSubmit={applyFilters}>
-        <label className="audit-filter-wide">Cari aktivitas (maks. 120 karakter)<input maxLength={120} value={draft.q} onChange={(event) => setDraft({ ...draft, q: event.target.value })} placeholder="Tindakan, jenis objek, nama pengguna, atau email" /></label>
+        <label className="audit-filter-wide">Cari Aktivitas<input maxLength={120} value={draft.q} onChange={(event) => setDraft({ ...draft, q: event.target.value })} placeholder="Tindakan, jenis objek, nama pengguna, atau email" /></label>
         <label>Tindakan<select value={draft.action} onChange={(event) => setDraft({ ...draft, action: event.target.value })}><option value="">Semua tindakan</option><option value="ADMIN_LOGIN">Admin masuk</option><option value="ADMIN_LOGOUT">Admin keluar</option><option value="DATASET_UPLOAD">Unggah Dataset</option><option value="DATASET_VALIDATE">Validasi Dataset</option><option value="PARAMETER_SEARCH">Pencarian Parameter</option><option value="FINAL_CLUSTERING">Klasterisasi Final</option><option value="RUN_ACTIVATE">Aktifkan hasil</option></select></label>
         <label>Jenis objek<select value={draft.entity_type} onChange={(event) => setDraft({ ...draft, entity_type: event.target.value })}><option value="">Semua objek</option><option value="dataset">Dataset</option><option value="run">Eksekusi</option><option value="user">Pengguna</option></select></label>
-        <label>ID objek<input inputMode="numeric" value={draft.entity_id} onChange={(event) => setDraft({ ...draft, entity_id: event.target.value })} placeholder="Masukkan ID positif" /></label>
+        <label>ID objek<input inputMode="numeric" value={draft.entity_id} onChange={(event) => setDraft({ ...draft, entity_id: event.target.value })} placeholder="Contoh: 20" /></label>
         <label>ID pengguna<input inputMode="numeric" value={draft.user_id} onChange={(event) => setDraft({ ...draft, user_id: event.target.value })} placeholder="Masukkan ID pengguna" /></label>
-        <label>Sejak waktu<input type="datetime-local" value={draft.created_after} onChange={(event) => setDraft({ ...draft, created_after: event.target.value })} /></label>
-        <label>Sampai waktu<input type="datetime-local" value={draft.created_before} onChange={(event) => setDraft({ ...draft, created_before: event.target.value })} /></label>
+        <label>Dari Tanggal<input type="datetime-local" value={draft.created_after} onChange={(event) => setDraft({ ...draft, created_after: event.target.value })} /></label>
+        <label>Sampai Tanggal<input type="datetime-local" value={draft.created_before} onChange={(event) => setDraft({ ...draft, created_before: event.target.value })} /></label>
         {formError && <div className="form-error audit-filter-wide">{formError}</div>}
         <div className="audit-filter-actions audit-filter-wide"><button className="button button-primary" type="submit"><Search size={15} /> Terapkan filter</button><button className="button button-secondary" type="button" onClick={logs.reload}><RefreshCw size={14} /> Muat ulang</button></div>
       </form>
     </GlassCard>
 
-    <GlassCard title="Catatan Aktivitas" subtitle="Jumlah mencakup seluruh catatan yang sesuai dengan filter, bukan hanya catatan pada halaman ini.">
+    <GlassCard title="Catatan Aktivitas">
       {logs.loading ? <StatePanel type="loading" title="Memuat catatan aktivitas" message="Mengambil catatan aktivitas." /> : logs.error ? <StatePanel type="error" title="Catatan aktivitas belum tersedia" message={logs.error} action={<button className="button button-secondary" onClick={logs.reload}>Coba lagi</button>} /> : !auditData?.items.length ? <div className="audit-empty"><span className="audit-empty-icon"><ClipboardList size={24} /></span><StatePanel type="empty" title="Belum ada catatan aktivitas" message="Tidak ditemukan aktivitas yang sesuai dengan filter." /></div> : <>
         <div className="audit-result-meta"><span><strong>{formatNumber(auditData.count)}</strong> catatan sesuai</span><span>Halaman {currentPage} dari {totalPages}</span></div>
         <div className="table-scroll"><table className="data-table audit-table"><thead><tr><th>Waktu</th><th>Tindakan</th><th>Pengguna</th><th>Objek</th><th>Alamat IP</th><th>Rincian</th></tr></thead><tbody>{auditData.items.map((record, index) => <tr key={String(record.id ?? `${record.action}-${index}`)}><td><strong>{formatDate(typeof record.created_at === 'string' ? record.created_at : null)}</strong><small className="table-sub">#{displayValue(record.id)}</small></td><td><span className="audit-action">{actionLabel(typeof record.action === 'string' ? record.action : null)}</span></td><td>{displayValue(record.username || record.email || record.user_id, 'username')}</td><td>{[displayValue(record.entity_type, 'entity_type'), record.entity_id == null ? '' : `#${displayValue(record.entity_id)}`].filter(Boolean).join(' ') || '—'}</td><td>{displayValue(record.ip_address)}</td><td><DetailValue record={record} /></td></tr>)}</tbody></table></div>

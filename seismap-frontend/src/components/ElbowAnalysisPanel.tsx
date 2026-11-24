@@ -298,8 +298,8 @@ export function ElbowAnalysisPanel({
 
   return <section className="elbow-section" id="elbow-analysis">
     <GlassCard
-      title="Analisis K-Distance & Elbow"
-      subtitle="Bandingkan kurva berdasarkan MinPts, periksa titik Knee, lalu cocokkan rekomendasi epsilon dengan eksperimen DBSCAN yang benar-benar diuji."
+      title="Analisis Kurva k-Distance"
+      subtitle="Bandingkan kurva k-distance tiap MinPts untuk melihat titik siku (knee) dan kandidat epsilon."
       action={jobId && jobStatus === 'SUCCESS' && !IS_PREVIEW_MODE ? <button className="button button-secondary elbow-refresh" type="button" onClick={retrySummary} disabled={summaryLoading}><RefreshCw size={13} /> Muat ulang</button> : undefined}
     >
       {IS_PREVIEW_MODE ? <StatePanel type="info" title="Analisis tersedia pada backend aktif" message="Mode Pratinjau tidak memuat artefak ilmiah simulasi. Hubungkan aplikasi ke backend untuk melihat hasil K-Distance yang sebenarnya." />

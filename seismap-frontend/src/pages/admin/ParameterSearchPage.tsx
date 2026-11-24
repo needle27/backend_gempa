@@ -7,7 +7,6 @@ import {
   FlaskConical,
   Info,
   Play,
-  SlidersHorizontal,
   Sparkles,
   Workflow,
 } from 'lucide-react';
@@ -235,8 +234,8 @@ export function ParameterSearchPage() {
 
       <div className="parameter-layout parameter-search-layout">
         <GlassCard
-          title="Konfigurasi pencarian"
-          subtitle="MinPts wajib diisi. Epsilon dievaluasi melalui deteksi knee, kandidat eksplisit, dan default grid backend."
+          title="Konfigurasi Pencarian"
+          subtitle="MinPts wajib diisi. Epsilon dievaluasi melalui deteksi knee, kandidat eksplisit, dan grid epsilon standar."
         >
           <form className="stack-form" onSubmit={submit}>
             <label>
@@ -284,7 +283,7 @@ export function ParameterSearchPage() {
                 checked={useDefaultGrid}
                 onChange={(event) => setUseDefaultGrid(event.target.checked)}
               />{' '}
-              Gunakan default epsilon grid backend (10, 15, 20, 25, 30, 40, 50, 60, 75, 100 km)
+              Gunakan grid epsilon standar (10–100 km)
             </label>
             <div className="combination-estimate-badge">
               <Sparkles size={14} />
@@ -293,13 +292,7 @@ export function ParameterSearchPage() {
               </span>
             </div>
             <div className="inline-notice">
-              <SlidersHorizontal size={15} /> Backend menggabungkan kandidat dari knee sensitivity, epsilon eksplisit,
-              dan default grid yang diaktifkan. Epsilon dibulatkan dan dideduplikasi oleh backend; frontend tidak
-              menghitung atau mengonversi epsilon.
-            </div>
-            <div className="inline-notice">
-              Konfigurasi backend BE 4.1: Haversine dengan jari-jari bumi 6371,0088 km; mode cross (seluruh epsilon ×
-              seluruh MinPts); evaluasi validitas multikriteria (jumlah klaster 2–80, noise ≤ 40%, dominasi klaster ≤ 60%).
+              Metode: DBSCAN Haversine · Kriteria valid: 2–80 klaster, noise ≤ 40%, dominasi klaster ≤ 60%.
             </div>
             {IS_PREVIEW_MODE && (
               <div className="inline-notice">
@@ -325,8 +318,8 @@ export function ParameterSearchPage() {
         </GlassCard>
 
         <GlassCard
-          title="Status pencarian"
-          subtitle="Permintaan yang diterima akan masuk antrean worker Celery dan diproses secara sekuensial."
+          title="Status Pencarian"
+          subtitle="Proses berjalan di latar belakang secara bertahap."
         >
           {parameterJobId ? (
             jobState.error ? (
@@ -389,7 +382,7 @@ export function ParameterSearchPage() {
             <GlassCard className="recommendation-card">
               <div className="recommendation-heading">
                 <div>
-                  <span className="eyebrow">REKOMENDASI METODOLOGIS BE 4.1</span>
+                  <span className="eyebrow">REKOMENDASI METODOLOGIS</span>
                   <h3>Parameter Rekomendasi Terpilih (Eksperimen #{selectedExp.id})</h3>
                 </div>
                 <StatusBadge status="RECOMMENDED" />
@@ -470,14 +463,14 @@ export function ParameterSearchPage() {
                 <strong>Tidak Ada Kombinasi Parameter yang Memenuhi Kriteria Validitas</strong>
                 <p>
                   Seluruh kombinasi parameter yang diuji menghasilkan jumlah klaster, persentase noise, atau dominasi
-                  klaster di luar ambang batas validitas metodologi BE 4.1. Tidak ada eksperimen yang direkomendasikan
+                  klaster di luar ambang batas kriteria validitas metodologis. Tidak ada eksperimen yang direkomendasikan
                   untuk klasterisasi final.
                 </p>
               </div>
             </div>
           ) : (
             <div className="inline-notice">
-              <Info size={15} /> Status rekomendasi multikriteria belum tersedia untuk proses ini (job historis sebelum T8).
+              <Info size={15} /> Status rekomendasi multikriteria belum tersedia untuk proses ini.
             </div>
           )}
         </>
@@ -525,11 +518,11 @@ export function ParameterSearchPage() {
       {/* TRANSPARANSI METODOLOGI: AMBANG BATAS & BOBOT */}
       {(validityThresh || recWeights) && (
         <details className="transparency-details">
-          <summary>Transparansi Metodologi: Ambang Batas Validitas & Bobot Rekomendasi (BE 4.1)</summary>
+          <summary>Transparansi Metodologi: Ambang Batas Validitas & Bobot Rekomendasi</summary>
           <div className="transparency-grid">
             {validityThresh && (
               <div className="transparency-box">
-                <h4>Ambang Batas Validitas (T6)</h4>
+                <h4>Ambang Batas Validitas</h4>
                 <ul>
                   <li>
                     <span>Jumlah Klaster Minimum</span>
@@ -552,7 +545,7 @@ export function ParameterSearchPage() {
             )}
             {recWeights && (
               <div className="transparency-box">
-                <h4>Bobot Multikriteria Rekomendasi (T8)</h4>
+                <h4>Bobot Multikriteria Rekomendasi</h4>
                 <ul>
                   <li>
                     <span>Skor Silhouette</span>
@@ -579,7 +572,7 @@ export function ParameterSearchPage() {
 
       {/* METADATA AKTUAL DARI JOB */}
       {jobMetadata && (
-        <GlassCard title="Konfigurasi aktual backend" subtitle="Konfigurasi aktual dari detail job backend.">
+        <GlassCard title="Konfigurasi Aktual Proses" subtitle="Rincian konfigurasi parameter yang diterapkan saat proses berjalan.">
           <div className="metadata-grid">
             <div><strong>Versi metode</strong><p>{jobMetadata.method_version ?? '—'}</p></div>
             <div><strong>Mode kombinasi</strong><p>{jobMetadata.combination_mode ?? '—'}</p></div>
@@ -592,7 +585,7 @@ export function ParameterSearchPage() {
                   : '—'}
               </p>
             </div>
-            <div><strong>Default grid (km)</strong><p>{(jobMetadata.default_grid_km ?? jobMetadata.default_grid)?.join(', ') || '—'}</p></div>
+            <div><strong>Grid standar (km)</strong><p>{(jobMetadata.default_grid_km ?? jobMetadata.default_grid)?.join(', ') || '—'}</p></div>
             <div><strong>Kandidat epsilon aktual (km)</strong><p>{jobMetadata.epsilon_candidates_km?.join(', ') || '—'}</p></div>
             <div><strong>Sensitivitas (%)</strong><p>{jobMetadata.sensitivity_percentages?.join(', ') || '—'}</p></div>
             <div>
@@ -606,7 +599,7 @@ export function ParameterSearchPage() {
             <div><strong>Strategi kandidat epsilon</strong><p>{jobMetadata.epsilon_candidate_strategy ?? '—'}</p></div>
             <div><strong>Kombinasi diuji</strong><p>{jobMetadata.combination_count ?? '—'}</p></div>
             <div><strong>MinPts kandidat</strong><p>{jobMetadata.min_samples_candidates?.join(', ') || '—'}</p></div>
-            <div><strong>Grid default digunakan</strong><p>{jobMetadata.use_default_grid == null ? '—' : jobMetadata.use_default_grid ? 'Ya' : 'Tidak'}</p></div>
+            <div><strong>Grid standar digunakan</strong><p>{jobMetadata.use_default_grid == null ? '—' : jobMetadata.use_default_grid ? 'Ya' : 'Tidak'}</p></div>
             <div>
               <strong>Status kandidat</strong>
               <p>
@@ -632,8 +625,8 @@ export function ParameterSearchPage() {
 
       {/* TABEL HASIL EKSPERIMEN LENGKAP */}
       <GlassCard
-        title="Seluruh hasil eksperimen"
-        subtitle="Seluruh hasil dievaluasi dengan kriteria validitas metodologis BE 4.1 dan skoring multikriteria terbobot."
+        title="Hasil Eksperimen"
+        subtitle="Seluruh hasil dievaluasi dengan kriteria validitas metodologis dan skoring multikriteria terbobot."
       >
         {experimentError ? (
           <StatePanel type="error" title="Eksperimen belum tersedia" message={experimentError} />
@@ -798,8 +791,8 @@ export function ParameterSearchPage() {
       <div className="admin-note">
         <FlaskConical size={16} />
         <span>
-          Penanda rekomendasi dan skor multikriteria merupakan hasil evaluasi analitis objektif BE 4.1 untuk membantu
-          pengambilan keputusan metodologi penelitian DBSCAN Gempa Indonesia.
+          Penanda rekomendasi dan skor multikriteria merupakan hasil evaluasi berdasarkan kriteria validitas metodologis untuk membantu
+          pengambilan keputusan penelitian DBSCAN Gempa Indonesia.
         </span>
         <ArrowRight size={14} />
       </div>

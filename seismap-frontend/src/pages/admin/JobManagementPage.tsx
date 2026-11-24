@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity, ArrowRight, BarChart3, CheckCircle2, Clock3, Database, Filter, ListTodo,
+  Activity, ArrowRight, BarChart3, CheckCircle2, Database, Filter, ListTodo,
   RefreshCw, Search, Workflow, XCircle,
 } from 'lucide-react';
 import { getDatasets, getExperiments, getJobs, type JobListFilters } from '../../api/services';
@@ -166,12 +166,12 @@ export function JobManagementPage() {
     <PageHeader
       eyebrow="ADMIN / PEMANTAUAN PROSES"
       title="Manajemen Proses"
-      description="Pantau Pencarian Parameter dan Klasterisasi Final, buka kembali hasil eksperimen, lalu lanjutkan ke DBSCAN Final tanpa mengulang pencarian."
+      description="Pantau progres Pencarian Parameter dan DBSCAN Final, lalu buka kembali hasil eksperimen."
       action={<SimulationTag />}
     />
 
     <div className="stats-grid job-stats-grid">
-      <StatCard label="Total proses sesuai filter" value={total === null || total === undefined ? '—' : formatNumber(total)} icon={<ListTodo size={17} />} tone="cyan" trend="Jumlah seluruh proses sesuai filter" />
+      <StatCard label="Total Proses" value={total === null || total === undefined ? '—' : formatNumber(total)} icon={<ListTodo size={17} />} tone="cyan" trend="Sesuai filter aktif" />
       <StatCard label="Belum selesai" value={formatNumber(activeOnPage)} icon={<Activity size={17} />} tone="amber" trend="Termasuk proses yang dijeda" />
       <StatCard label="Berhasil" value={formatNumber(successOnPage)} icon={<CheckCircle2 size={17} />} tone="teal" trend="Pada halaman ini" />
       <StatCard label="Gagal" value={formatNumber(failedOnPage)} icon={<XCircle size={17} />} tone="violet" trend="Pada halaman ini" />
@@ -179,9 +179,8 @@ export function JobManagementPage() {
 
     <GlassCard
       className="job-filter-card"
-      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Filter size={16} /> Filter proses</span>}
-      subtitle="Saring proses berdasarkan status, jenis, atau dataset."
-      action={<button className="button button-secondary" type="button" onClick={resetFilters}>Reset filter</button>}
+      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Filter size={16} /> Filter Proses</span>}
+      action={<button className="button button-secondary" type="button" onClick={resetFilters}>Reset Filter</button>}
     >
       <form className="job-filter-grid" onSubmit={applyFilters}>
         <label>Status
@@ -212,7 +211,7 @@ export function JobManagementPage() {
       </form>
     </GlassCard>
 
-    <GlassCard title="Daftar proses" subtitle="Proses sebelumnya tetap dapat dibuka selama datanya tersedia.">
+    <GlassCard title="Daftar Proses">
       {loading ? <StatePanel type="loading" title="Memuat daftar proses" message="Mengambil proses dan status terbaru." />
         : error ? <StatePanel type="error" title="Daftar proses belum tersedia" message={error} action={<button className="button button-secondary" onClick={() => setRefreshKey((value) => value + 1)}>Coba lagi</button>} />
           : !jobs?.items.length ? <StatePanel type="empty" title="Proses tidak ditemukan" message="Tidak ada proses yang sesuai dengan filter. Hapus filter atau jalankan proses melalui halaman Pencarian Parameter atau DBSCAN Final." />
@@ -359,7 +358,5 @@ export function JobManagementPage() {
             </div>}
           </div>}
     </GlassCard>}
-
-    <div className="admin-note"><Clock3 size={16} /><span>Status proses yang masih berjalan atau menunggu checkpoint diperbarui otomatis. Proses yang dijeda tetap tersimpan dan dapat dilanjutkan dari checkpoint terakhir.</span></div>
   </div>;
 }
