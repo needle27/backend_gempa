@@ -1,10 +1,31 @@
-import { Activity, ArrowRight, Database, ExternalLink, FileClock, Layers3, Rocket, ShieldCheck, Waves } from 'lucide-react';
+import { ArrowRight, Database, ExternalLink, FileClock, Layers3, Rocket, ShieldCheck, Waves } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getDatasets, getPublicMetadata, getPublicSummary } from '../../api/services';
 import { GlassCard, PageHeader, SimulationTag, StatePanel, StatCard, StatusBadge, formatDate, formatNumber } from '../../components/ui';
 import { useResource } from '../../hooks/useResource';
-import { IS_PREVIEW_MODE } from '../../config/env';
 import { formatPercent } from '../../utils/presentation';
+
+const INSTITUTION_ACRONYMS = new Set(['bmkg', 'usgs', 'noaa', 'isc', 'emsc', 'gfz', 'bnpb', 'brin', 'inatews', 'csv', 'api']);
+
+function formatSourceInstitution(raw?: string | null): string {
+  const trimmed = raw?.trim();
+  if (!trimmed) return 'Katalog Gempa';
+  return trimmed
+    .split(/\s+/)
+    .map((word) => {
+      const lower = word.toLowerCase();
+      if (INSTITUTION_ACRONYMS.has(lower)) return lower.toUpperCase();
+      return word === lower ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+    })
+    .join(' ');
+}
+
+function silhouetteQualityLabel(score: number | null | undefined): string {
+  if (score === null || score === undefined || Number.isNaN(score)) return '';
+  if (score >= 0.5) return 'baik';
+  if (score >= 0.25) return 'cukup';
+  return 'lemah';
+}
 
 export function DashboardPage() {
   const datasets = useResource(getDatasets, []);
@@ -27,6 +48,8 @@ export function DashboardPage() {
   const activeRun = activePublic.data?.metadata?.run;
   const activeSummary = activePublic.data?.summary;
   const activeDataset = activePublic.data?.metadata?.dataset;
+  const clusteredPct = activeSummary ? Math.max(0, Math.min(100, 100 - activeSummary.noise_percentage)) : 0;
+  const qualityLabel = activeSummary ? silhouetteQualityLabel(activeSummary.silhouette_score) : '';
 
   return (
     <div className="page-stack">
@@ -48,17 +71,10 @@ export function DashboardPage() {
         />
       ) : (
         <>
-          <div className="stats-grid">
-            <StatCard label="Dataset tersimpan" value={formatNumber(list.length)} icon={<Database size={18} />} />
-            <StatCard label="Baris bersih" value={formatNumber(totalRows)} icon={<Waves size={18} />} tone="violet" />
-            <StatCard label="Baris ditolak" value={formatNumber(rejectedRows)} icon={<ShieldCheck size={18} />} tone="amber" />
-            <StatCard
-              label="Mode aplikasi"
-              value={IS_PREVIEW_MODE ? 'Pratinjau' : 'Terhubung'}
-              icon={<Activity size={18} />}
-              tone="teal"
-              trend={IS_PREVIEW_MODE ? 'Fitur perubahan data dinonaktifkan' : 'Layanan API terhubung'}
-            />
+          <div className="stats-grid stats-grid-three">
+            <StatCard label="Dataset Tersimpan" value={formatNumber(list.length)} icon={<Database size={18} />} />
+            <StatCard label="Baris Bersih" value={formatNumber(totalRows)} icon={<Waves size={18} />} tone="violet" />
+            <StatCard label="Baris Ditolak" value={formatNumber(rejectedRows)} icon={<ShieldCheck size={18} />} tone="amber" />
           </div>
 
           {/* Kartu Sorotan: Hasil Klasterisasi Aktif di WebGIS Publik */}
@@ -71,7 +87,7 @@ export function DashboardPage() {
                 </h3>
                 <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>
                   {activeDataset?.name || activeSummary?.dataset_name
-                    ? `Sumber: ${activeDataset?.name || activeSummary?.dataset_name} · ${activeDataset?.source_name || 'Katalog gempa'}`
+                    ? `Sumber: ${activeDataset?.name || activeSummary?.dataset_name} · ${formatSourceInstitution(activeDataset?.source_name)}`
                     : 'Rujukan data resmi yang saat ini disajikan kepada publik.'}
                 </p>
               </div>
@@ -117,9 +133,13 @@ export function DashboardPage() {
                   </div>
                 </div>
 
+                <p className="active-publication-summary tabular-nums">
+                  Terbentuk {formatNumber(activeSummary.cluster_count)} klaster spasial ({formatPercent(clusteredPct, 2)} kejadian terklasterisasi){qualityLabel ? ` dengan pemisahan klaster yang ${qualityLabel}.` : '.'}
+                </p>
+
                 <div className="active-publication-actions">
                   <Link to="/" className="button button-primary">
-                    <ExternalLink size={14} /> Lihat di Peta Publik <ArrowRight size={13} />
+                    <ExternalLink size={14} /> Lihat di Peta Publik
                   </Link>
                   <Link to="/admin/riwayat-run" className="button button-secondary">
                     <FileClock size={14} /> Kelola di Riwayat Eksekusi
@@ -142,8 +162,7 @@ export function DashboardPage() {
 
           <div className="dashboard-grid">
             <GlassCard
-              title="Dataset terbaru"
-              subtitle="Daftar dataset penelitian yang tersimpan."
+              title="Dataset Terbaru"
               action={
                 <Link to="/admin/dataset" className="inline-link">
                   Lihat semua <ArrowRight size={14} />
@@ -171,18 +190,17 @@ export function DashboardPage() {
             <GlassCard
               className="workflow-card"
               title="Alur Kerja Penelitian"
-              subtitle="Tahapan pengelolaan hasil DBSCAN."
               action={<span className="workflow-icon"><Layers3 size={18} /></span>}
             >
               <div className="workflow-steps">
                 <div>
                   <i>01</i>
-                  <span><strong>Dataset</strong><small>Unggah CSV bersih</small></span>
+                  <span><strong>Dataset</strong><small>Unggah dataset gempa (CSV)</small></span>
                   <Link to="/admin/dataset">Buka</Link>
                 </div>
                 <div>
                   <i>02</i>
-                  <span><strong>Pencarian parameter</strong><small>Eksperimen kandidat ε dan MinPts</small></span>
+                  <span><strong>Pencarian Parameter</strong><small>Eksperimen kandidat ε dan MinPts</small></span>
                   <Link to="/admin/parameter">Buka</Link>
                 </div>
                 <div>
@@ -192,16 +210,11 @@ export function DashboardPage() {
                 </div>
                 <div>
                   <i>04</i>
-                  <span><strong>Riwayat eksekusi</strong><small>Periksa dan aktifkan hasil yang berhasil</small></span>
+                  <span><strong>Riwayat Eksekusi</strong><small>Periksa dan aktifkan hasil klasterisasi</small></span>
                   <Link to="/admin/riwayat-run">Buka</Link>
                 </div>
               </div>
             </GlassCard>
-          </div>
-
-          <div className="admin-note">
-            <FileClock size={16} />
-            <span>Catatan aktivitas tersedia pada menu Log Aktivitas. Status proses dapat dipantau setelah Pencarian Parameter atau DBSCAN Final dijalankan.</span>
           </div>
         </>
       )}

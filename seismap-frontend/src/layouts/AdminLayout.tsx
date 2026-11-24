@@ -111,7 +111,7 @@ export function AdminLayout() {
           <span className="status-pulse" />
           <div>
             <strong>Status sistem</strong>
-            <small>{IS_PREVIEW_MODE ? 'Lingkungan pratinjau' : 'Terhubung ke sistem'}</small>
+            <small>{IS_PREVIEW_MODE ? 'Lingkungan pratinjau' : 'API terhubung'}</small>
           </div>
         </div>
         <NavLink to="/" className="back-public" onClick={() => setIsSidebarOpen(false)}>

@@ -3931,7 +3931,7 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
   width: 100%;
   min-width: 0;
 }
@@ -3990,6 +3990,13 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
   font-weight: 400;
   color: var(--muted, #9aadc1);
   margin-left: 2px;
+}
+
+.active-publication-summary {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #c7dceb;
 }
 
 .active-publication-actions {
