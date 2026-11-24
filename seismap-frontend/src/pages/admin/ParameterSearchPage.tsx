@@ -304,7 +304,7 @@ export function ParameterSearchPage() {
                 {tx('Mode Pratinjau: pencarian parameter tidak dikirim ke server.', 'Preview Mode: parameter search is not dispatched to the server.')}
               </div>
             )}
-            {error && <div className="form-error">{error}</div>}
+            {error && <div className="form-error">{friendlyErrorMessage(error, undefined, undefined, lang)}</div>}
             <PrimaryButton
               type="submit"
               disabled={
@@ -345,7 +345,9 @@ export function ParameterSearchPage() {
                   <span>
                     {jobState.job.current_step
                       ? processStepLabel(jobState.job.current_step, lang)
-                      : jobState.job.message || tx('Menunggu pembaruan status', 'Waiting for status updates')}
+                      : jobState.job.message
+                        ? friendlyErrorMessage(jobState.job.message, undefined, undefined, lang)
+                        : tx('Menunggu pembaruan status', 'Waiting for status updates')}
                   </span>
                 </div>
                 {jobState.job.message && <p className="subtle-copy">{friendlyErrorMessage(jobState.job.message, undefined, undefined, lang)}</p>}
@@ -581,7 +583,7 @@ export function ParameterSearchPage() {
         <GlassCard title={tx('Konfigurasi Aktual Proses', 'Actual Job Configuration')} subtitle={tx('Rincian konfigurasi parameter yang diterapkan saat proses berjalan.', 'Parameter configuration details recorded during job execution.')}>
           <div className="metadata-grid">
             <div><strong>{tx('Versi metode', 'Method version')}</strong><p>{jobMetadata.method_version ?? '—'}</p></div>
-            <div><strong>{tx('Mode kombinasi', 'Combination mode')}</strong><p>{jobMetadata.combination_mode ?? '—'}</p></div>
+            <div><strong>{tx('Mode kombinasi', 'Combination mode')}</strong><p>{jobMetadata.combination_mode === 'cross' ? tx('Kombinasi silang', 'Cross product') : jobMetadata.combination_mode ?? '—'}</p></div>
             <div><strong>{tx('Jumlah kandidat epsilon', 'Epsilon candidate count')}</strong><p>{jobMetadata.epsilon_candidate_count ?? '—'}</p></div>
             <div>
               <strong>{tx('Pembulatan epsilon', 'Epsilon rounding')}</strong>
@@ -598,7 +600,18 @@ export function ParameterSearchPage() {
               <strong>{tx('Jumlah kandidat per sumber', 'Candidates per source')}</strong>
               <p>
                 {jobMetadata.source_candidate_counts
-                  ? Object.entries(jobMetadata.source_candidate_counts).map(([key, value]) => `${key}: ${value}`).join(' · ')
+                  ? Object.entries(jobMetadata.source_candidate_counts)
+                      .map(([key, value]) => {
+                        const label = key === 'knee'
+                          ? 'Knee'
+                          : key === 'default_grid' || key === 'grid'
+                            ? tx('Grid standar', 'Standard grid')
+                            : key === 'explicit'
+                              ? tx('Eksplisit', 'Explicit')
+                              : key;
+                        return `${label}: ${value}`;
+                      })
+                      .join(' · ')
                   : '—'}
               </p>
             </div>
@@ -610,7 +623,11 @@ export function ParameterSearchPage() {
               <strong>{tx('Status kandidat', 'Candidate status')}</strong>
               <p>
                 {typeof jobMetadata.candidate_status === 'string'
-                  ? jobMetadata.candidate_status
+                  ? jobMetadata.candidate_status === 'RESOLVED'
+                    ? tx('Terselesaikan', 'Resolved')
+                    : jobMetadata.candidate_status === 'FAILED_NO_CANDIDATES'
+                      ? tx('Tidak ada kandidat', 'No candidates')
+                      : jobMetadata.candidate_status
                   : jobMetadata.candidate_status
                     ? JSON.stringify(jobMetadata.candidate_status)
                     : '—'}

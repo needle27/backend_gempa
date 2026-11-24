@@ -246,7 +246,7 @@ export function JobManagementPage() {
           : <div className="job-detail-layout">
             <div className="job-detail-main">
               <div className="job-detail-heading"><div><span className="eyebrow">{jobTypeLabel(selectedJob.job_type, lang)}</span><h3>{tx('Proses', 'Job')} #{selectedJob.id}</h3></div><StatusBadge status={selectedJob.status} /></div>
-              <div className="job-detail-progress"><div className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, selectedJob.progress || 0))}%` }} /></div><div className="progress-label"><strong>{formatNumber(selectedJob.progress || 0)}%</strong><span>{selectedJob.current_step ? processStepLabel(selectedJob.current_step, lang) : selectedJob.message || tx('Menunggu pembaruan status', 'Waiting for status update')}</span></div></div>
+              <div className="job-detail-progress"><div className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, selectedJob.progress || 0))}%` }} /></div><div className="progress-label"><strong>{formatNumber(selectedJob.progress || 0)}%</strong><span>{selectedJob.current_step ? processStepLabel(selectedJob.current_step, lang) : selectedJob.message ? friendlyErrorMessage(selectedJob.message, undefined, undefined, lang) : tx('Menunggu pembaruan status', 'Waiting for status update')}</span></div></div>
               {selectedJob.message && <p className="job-detail-message">{friendlyErrorMessage(selectedJob.message, undefined, undefined, lang)}</p>}
               {selectedJob.error_code && <div className="form-error">{friendlyErrorMessage(selectedJob.error_code, undefined, undefined, lang)}</div>}
               <div className="job-detail-fields">

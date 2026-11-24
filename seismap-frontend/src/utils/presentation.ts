@@ -178,6 +178,7 @@ const FIELD_LABELS_ID: Record<string, string> = {
   eps_candidates_km: 'Kandidat Epsilon Eksplisit (km)', use_default_grid: 'Gunakan Grid Standar',
   combination_count: 'Jumlah Kombinasi', valid_count: 'Jumlah Valid',
   total_experiments: 'Total Eksperimen', recommended_experiment_id: 'ID Eksperimen Rekomendasi',
+  mode: 'Mode', checkpoint: 'Checkpoint', new_job_id: 'ID Proses Baru', candidate_status: 'Status Kandidat',
 };
 
 const FIELD_LABELS_EN: Record<string, string> = {
@@ -215,6 +216,7 @@ const FIELD_LABELS_EN: Record<string, string> = {
   eps_candidates_km: 'Explicit Epsilon Candidates (km)', use_default_grid: 'Use Standard Grid',
   combination_count: 'Combination Count', valid_count: 'Valid Count',
   total_experiments: 'Total Experiments', recommended_experiment_id: 'Recommended Experiment ID',
+  mode: 'Mode', checkpoint: 'Checkpoint', new_job_id: 'New Job ID', candidate_status: 'Candidate Status',
 };
 
 const INVALID_REASON_LABELS_ID: Record<string, string> = {
@@ -373,17 +375,23 @@ export function actionLabel(value: string | null | undefined, lang: Language = g
     ADMIN_LOGIN: 'Admin masuk', LOGIN: 'Admin masuk', ADMIN_LOGOUT: 'Admin keluar', LOGOUT: 'Admin keluar',
     DATASET_UPLOAD: 'Unggah Dataset', DATASET_VALIDATE: 'Validasi Dataset', DATASET_CREATE: 'Membuat Dataset',
     PARAMETER_SEARCH: 'Pencarian Parameter', FINAL_CLUSTERING: 'Klasterisasi Final',
-    RUN_ACTIVATE: 'Mengaktifkan Run', ACTIVATE_RUN: 'Mengaktifkan Run', RUN_DEACTIVATE: 'Menonaktifkan Run',
-    JOB_PAUSE: 'Jeda Proses', JOB_RESUME: 'Lanjutkan Proses', JOB_STOP: 'Hentikan Proses',
-    JOB_CANCEL: 'Batalkan Proses', JOB_RESTART: 'Mulai Ulang Proses',
+    RUN_ACTIVATE: 'Mengaktifkan Run', ACTIVATE_RUN: 'Mengaktifkan Run', DBSCAN_RUN_ACTIVATED: 'Mengaktifkan Eksekusi DBSCAN', RUN_DEACTIVATE: 'Menonaktifkan Run',
+    JOB_PAUSE: 'Jeda Proses', JOB_PAUSED: 'Proses Dijeda', JOB_PAUSE_REQUESTED: 'Permintaan Jeda Proses',
+    JOB_RESUME: 'Lanjutkan Proses', JOB_RESUMED: 'Proses Dilanjutkan',
+    JOB_STOP: 'Hentikan Proses', JOB_STOP_REQUESTED: 'Permintaan Penghentian Proses',
+    JOB_CANCEL: 'Batalkan Proses', JOB_CANCELLED: 'Proses Dibatalkan',
+    JOB_RESTART: 'Mulai Ulang Proses', JOB_RESTARTED: 'Proses Dimulai Ulang', JOB_CREATED_BY_RESTART: 'Proses Dibuat dari Mulai Ulang',
   };
   const actionsEn: Record<string, string> = {
     ADMIN_LOGIN: 'Admin Login', LOGIN: 'Admin Login', ADMIN_LOGOUT: 'Admin Logout', LOGOUT: 'Admin Logout',
     DATASET_UPLOAD: 'Upload Dataset', DATASET_VALIDATE: 'Validate Dataset', DATASET_CREATE: 'Create Dataset',
     PARAMETER_SEARCH: 'Parameter Search', FINAL_CLUSTERING: 'Final Clustering',
-    RUN_ACTIVATE: 'Activate Run', ACTIVATE_RUN: 'Activate Run', RUN_DEACTIVATE: 'Deactivate Run',
-    JOB_PAUSE: 'Pause Job', JOB_RESUME: 'Resume Job', JOB_STOP: 'Stop Job',
-    JOB_CANCEL: 'Cancel Job', JOB_RESTART: 'Restart Job',
+    RUN_ACTIVATE: 'Activate Run', ACTIVATE_RUN: 'Activate Run', DBSCAN_RUN_ACTIVATED: 'Activate DBSCAN Run', RUN_DEACTIVATE: 'Deactivate Run',
+    JOB_PAUSE: 'Pause Job', JOB_PAUSED: 'Job Paused', JOB_PAUSE_REQUESTED: 'Job Pause Requested',
+    JOB_RESUME: 'Resume Job', JOB_RESUMED: 'Job Resumed',
+    JOB_STOP: 'Stop Job', JOB_STOP_REQUESTED: 'Job Stop Requested',
+    JOB_CANCEL: 'Cancel Job', JOB_CANCELLED: 'Job Cancelled',
+    JOB_RESTART: 'Restart Job', JOB_RESTARTED: 'Job Restarted', JOB_CREATED_BY_RESTART: 'Job Created by Restart',
   };
   return (lang === 'en' ? actionsEn : actionsId)[key] || humanizeCode(value);
 }
@@ -449,6 +457,142 @@ export function friendlyErrorMessage(
   if (/ringkasan analisis( k-distance)? gagal dimuat/.test(normalized)) {
     return lang === 'en' ? 'Failed to load k-Distance analysis summary.' : raw;
   }
+
+  // Dynamic & static backend job progress / lifecycle messages
+  if (/^menunggu worker celery\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Waiting for background worker slot.' : 'Menunggu giliran petugas proses.';
+  }
+  if (/^background job sedang berjalan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Background job is running.' : raw;
+  }
+  if (/^background job gagal\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Background job failed.' : raw;
+  }
+  if (/^pencarian parameter sedang berjalan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Parameter search is running.' : raw;
+  }
+  if (/^pencarian kandidat parameter dbscan sedang berjalan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'DBSCAN parameter candidate search is running.' : raw;
+  }
+  if (/^pencarian kandidat parameter dbscan dimulai\.?$/i.test(raw)) {
+    return lang === 'en' ? 'DBSCAN parameter candidate search started.' : raw;
+  }
+  if (/^menghitung kurva k-distance dan elbow untuk kandidat minpts\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Computing k-Distance and Elbow curves for MinPts candidates.' : raw;
+  }
+  const runningCombos = raw.match(/^Menjalankan\s+(\d+)\s+kombinasi:\s+(\d+)\s+epsilon\s*[×x]\s*(\d+)\s+MinPts\.?$/i);
+  if (runningCombos) {
+    return lang === 'en'
+      ? `Evaluating ${runningCombos[1]} combinations: ${runningCombos[2]} epsilon × ${runningCombos[3]} MinPts.`
+      : raw;
+  }
+  const testingCombo = raw.match(/^Menguji\s+kombinasi\s+(\d+)\/(\d+)\.?$/i);
+  if (testingCombo) {
+    return lang === 'en'
+      ? `Evaluating combination ${testingCombo[1]}/${testingCombo[2]}.`
+      : raw;
+  }
+  const searchDone = raw.match(/^Pencarian selesai:\s+(\d+)\s+kombinasi diuji\.?$/i);
+  if (searchDone) {
+    return lang === 'en'
+      ? `Search completed: ${searchDone[1]} combinations evaluated.`
+      : raw;
+  }
+  if (/^pencarian parameter gagal\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Parameter search failed.' : raw;
+  }
+  if (/^final clustering sedang berjalan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Final DBSCAN clustering is running.' : raw;
+  }
+  if (/^final clustering selesai\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Final DBSCAN clustering completed.' : raw;
+  }
+  if (/^final clustering gagal\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Final DBSCAN clustering failed.' : raw;
+  }
+  if (/^job dijeda sebelum worker mulai\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Job paused before worker execution started.' : raw;
+  }
+  if (/^permintaan pause diterima; menunggu checkpoint aman\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Pause request received; waiting for a safe checkpoint.' : raw;
+  }
+  const pausedAtStage = raw.match(/^Job dijeda pada checkpoint:\s*(.+?)\.?$/i);
+  if (pausedAtStage) {
+    return lang === 'en'
+      ? `Job paused at checkpoint: ${processStepLabel(pausedAtStage[1], 'en')}.`
+      : raw;
+  }
+  if (/^job dijadwalkan kembali dari checkpoint terakhir\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Job re-queued from the last checkpoint.' : raw;
+  }
+  if (/^job dihentikan oleh admin\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Job stopped by administrator.' : raw;
+  }
+  if (/^job dihentikan pada checkpoint aman\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Job stopped at a safe checkpoint.' : raw;
+  }
+  if (/^permintaan stop diterima; menunggu checkpoint aman\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Stop request received; waiting for a safe checkpoint.' : raw;
+  }
+  if (/^job dijadwalkan ulang setelah kegagalan sementara\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Job rescheduled after a transient failure.' : raw;
+  }
+  const restartMsg = raw.match(/^Restart dari Job #(\d+);\s*menunggu worker Celery\.?$/i);
+  if (restartMsg) {
+    return lang === 'en'
+      ? `Restarted from Job #${restartMsg[1]}; waiting for background worker slot.`
+      : `Mulai ulang dari Proses #${restartMsg[1]}; menunggu antrean proses.`;
+  }
+  if (/^task pencarian parameter tidak dapat dijadwalkan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Unable to schedule parameter search task.' : raw;
+  }
+  if (/^task final clustering tidak dapat dijadwalkan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Unable to schedule final clustering task.' : raw;
+  }
+
+  // Backend API route Indonesian error messages
+  if (/^dataset tidak ditemukan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Dataset not found.' : raw;
+  }
+  if (/^job tidak ditemukan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Job not found.' : raw;
+  }
+  if (/^run tidak ditemukan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Execution run not found.' : raw;
+  }
+  if (/^dataset belum berstatus ready\.?$/i.test(raw)) {
+    return errorLabels.DATASET_NOT_READY;
+  }
+  if (/^pencarian parameter untuk dataset ini masih berjalan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'A Parameter Search job is already running for this dataset.' : raw;
+  }
+  if (/^final clustering untuk dataset ini masih berjalan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'A Final DBSCAN job is already running for this dataset.' : raw;
+  }
+  if (/^eksperimen tidak ditemukan pada dataset tersebut\.?$/i.test(raw)) {
+    return errorLabels.EXPERIMENT_NOT_FOUND;
+  }
+  if (/^eksperimen tidak valid untuk final clustering\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Experiment is not valid for final clustering.' : raw;
+  }
+  if (/^file dengan sha-256 yang sama sudah terdaftar\.?$/i.test(raw)) {
+    return lang === 'en' ? 'A file with the same SHA-256 checksum is already registered.' : raw;
+  }
+  if (/^hanya file \.csv yang diperbolehkan\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Only .csv files are permitted.' : raw;
+  }
+  if (/^data gempa realtime sementara tidak dapat diambil/i.test(raw)) {
+    return lang === 'en' ? 'Live earthquake feed is temporarily unavailable. Please try again.' : raw;
+  }
+  if (/^kredensial tidak valid atau akun sedang terkunci\.?$/i.test(raw)) {
+    return errorLabels.INVALID_CREDENTIALS;
+  }
+  if (/^email\/username dan password wajib diisi\.?$/i.test(raw)) {
+    return lang === 'en' ? 'Email/username and password are required.' : raw;
+  }
+  if (/^token tidak valid\.?$/i.test(raw) || /^akun tidak aktif\.?$/i.test(raw)) {
+    return errorLabels.UNAUTHORIZED;
+  }
   if (/timed? ?out|timeout/.test(normalized)) {
     return lang === 'en'
       ? 'The request timed out. Please try again.'
@@ -508,14 +652,34 @@ export function displayValue(
   if (key === 'job_type') return jobTypeLabel(text, lang);
   if (key === 'action') return actionLabel(text, lang);
   if (key === 'entity_type') {
-    const entitiesId: Record<string, string> = { dataset: 'Dataset', run: 'Eksekusi', user: 'Pengguna', job: 'Proses' };
-    const entitiesEn: Record<string, string> = { dataset: 'Dataset', run: 'Run', user: 'User', job: 'Job' };
+    const entitiesId: Record<string, string> = {
+      dataset: 'Dataset', dataset_file: 'File Dataset', run: 'Eksekusi', dbscan_run: 'Eksekusi DBSCAN',
+      user: 'Pengguna', job: 'Proses', processing_job: 'Proses',
+    };
+    const entitiesEn: Record<string, string> = {
+      dataset: 'Dataset', dataset_file: 'Dataset File', run: 'Run', dbscan_run: 'DBSCAN Run',
+      user: 'User', job: 'Job', processing_job: 'Processing Job',
+    };
     return (lang === 'en' ? entitiesEn : entitiesId)[text.toLowerCase()] || humanizeCode(text);
   }
   if (key === 'current_step') return processStepLabel(text, lang);
   if (key.endsWith('_at')) return formatDateTime(text, lang);
+  const detailTokensId: Record<string, string> = {
+    duplicate_hash: 'Hash file duplikat',
+    queued: 'Dalam antrean',
+    immediate_safe: 'Penghentian aman langsung',
+    cross: 'Kombinasi silang',
+  };
+  const detailTokensEn: Record<string, string> = {
+    duplicate_hash: 'Duplicate file hash',
+    queued: 'Queued',
+    immediate_safe: 'Immediate safe stop',
+    cross: 'Cross product',
+  };
+  const tokenMatch = (lang === 'en' ? detailTokensEn : detailTokensId)[text.toLowerCase()];
+  if (tokenMatch) return tokenMatch;
   if (/^[A-Z][A-Z0-9_]{2,}$/.test(text)) return humanizeCode(text);
-  return text;
+  return friendlyErrorMessage(text, undefined, undefined, lang);
 }
 
 function formatDateTime(value: string, lang: Language = getActiveLanguage()): string {
