@@ -76,8 +76,12 @@ export function AuditLogPage() {
     <PageHeader eyebrow="ADMIN / KEAMANAN & JEJAK AKTIVITAS" title="Log Aktivitas" description="Catatan tindakan yang dilakukan pada aplikasi. Catatan ini hanya dapat dilihat, dengan penyaringan dan pembagian halaman." action={<SimulationTag />} />
     <div className="validation-callout"><ShieldCheck size={18} /><div><strong>Catatan aktivitas bersifat permanen dan tidak dapat diubah melalui aplikasi.</strong><span>Pemeriksaan CSV juga tercatat sebagai aktivitas, meskipun berkas yang diperiksa tidak disimpan sebagai dataset.</span></div></div>
 
-    <section className="glass-card audit-filter-card">
-      <div className="card-heading"><div><h3><Filter size={16} /> Filter aktivitas</h3><p>Saring catatan berdasarkan kata kunci, tindakan, objek, pengguna, atau waktu.</p></div><button className="button button-secondary" type="button" onClick={clearFilters}>Hapus filter</button></div>
+    <GlassCard
+      className="audit-filter-card"
+      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Filter size={16} /> Filter aktivitas</span>}
+      subtitle="Saring catatan berdasarkan kata kunci, tindakan, objek, pengguna, atau waktu."
+      action={<button className="button button-secondary" type="button" onClick={clearFilters}>Hapus filter</button>}
+    >
       <form className="audit-filter-grid" onSubmit={applyFilters}>
         <label className="audit-filter-wide">Cari aktivitas (maks. 120 karakter)<input maxLength={120} value={draft.q} onChange={(event) => setDraft({ ...draft, q: event.target.value })} placeholder="Tindakan, jenis objek, nama pengguna, atau email" /></label>
         <label>Tindakan<select value={draft.action} onChange={(event) => setDraft({ ...draft, action: event.target.value })}><option value="">Semua tindakan</option><option value="ADMIN_LOGIN">Admin masuk</option><option value="ADMIN_LOGOUT">Admin keluar</option><option value="DATASET_UPLOAD">Unggah Dataset</option><option value="DATASET_VALIDATE">Validasi Dataset</option><option value="PARAMETER_SEARCH">Pencarian Parameter</option><option value="FINAL_CLUSTERING">Klasterisasi Final</option><option value="RUN_ACTIVATE">Aktifkan hasil</option></select></label>
@@ -89,7 +93,7 @@ export function AuditLogPage() {
         {formError && <div className="form-error audit-filter-wide">{formError}</div>}
         <div className="audit-filter-actions audit-filter-wide"><button className="button button-primary" type="submit"><Search size={15} /> Terapkan filter</button><button className="button button-secondary" type="button" onClick={logs.reload}><RefreshCw size={14} /> Muat ulang</button></div>
       </form>
-    </section>
+    </GlassCard>
 
     <GlassCard title="Catatan Aktivitas" subtitle="Jumlah mencakup seluruh catatan yang sesuai dengan filter, bukan hanya catatan pada halaman ini.">
       {logs.loading ? <StatePanel type="loading" title="Memuat catatan aktivitas" message="Mengambil catatan aktivitas." /> : logs.error ? <StatePanel type="error" title="Catatan aktivitas belum tersedia" message={logs.error} action={<button className="button button-secondary" onClick={logs.reload}>Coba lagi</button>} /> : !auditData?.items.length ? <div className="audit-empty"><span className="audit-empty-icon"><ClipboardList size={24} /></span><StatePanel type="empty" title="Belum ada catatan aktivitas" message="Tidak ditemukan aktivitas yang sesuai dengan filter." /></div> : <>

@@ -7,8 +7,8 @@ export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: 
   return <div className="page-heading"><div><div className="eyebrow">{eyebrow || 'SEISMAP / INDONESIA'}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{action && <div className="page-heading-action">{action}</div>}</div>;
 }
 
-export function GlassCard({ children, className = '', title, subtitle, action }: { children: ReactNode; className?: string; title?: string; subtitle?: string; action?: ReactNode }) {
-  return <section className={`glass-card ${className}`}><div className="glass-card-inner">{(title || subtitle || action) && <div className="card-heading"><div>{title && <h3>{title}</h3>}{subtitle && <p>{subtitle}</p>}</div>{action}</div>}{children}</div></section>;
+export function GlassCard({ children, className = '', title, subtitle, action }: { children?: ReactNode; className?: string; title?: ReactNode; subtitle?: ReactNode; action?: ReactNode }) {
+  return <section className={`glass-card ${className}`}><div className="glass-card-inner">{(title || subtitle || action) && <div className="card-heading"><div>{title && (typeof title === 'string' ? <h3>{title}</h3> : title)}{subtitle && (typeof subtitle === 'string' ? <p>{subtitle}</p> : subtitle)}</div>{action}</div>}{children}</div></section>;
 }
 
 export function StatCard({ label, value, suffix, icon, trend, tone = 'cyan' }: { label: string; value: string | number; suffix?: string; icon: ReactNode; trend?: string; tone?: 'cyan' | 'violet' | 'teal' | 'amber' }) {

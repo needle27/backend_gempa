@@ -470,7 +470,10 @@ input::placeholder, select:invalid { color: #637c92; }
 
 /* Job Management — centralized monitoring for parameter-search and final-clustering jobs */
 .job-stats-grid { margin: 0; }
-.job-filter-card { position: relative; padding: 22px; border-radius: var(--radius); }
+.job-filter-card { position: relative; border-radius: var(--radius); min-width: 0; }
+.job-filter-card:not(:has(.glass-card-inner)) { padding: 22px; }
+.audit-filter-card { position: relative; border-radius: var(--radius); min-width: 0; }
+.audit-filter-card:not(:has(.glass-card-inner)) { padding: 22px; }
 .job-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
 .job-filter-grid label { display: grid; gap: 7px; min-width: 0; color: var(--muted); font-size: 11px; }
 .job-filter-grid input, .job-filter-grid select { width: 100%; min-width: 0; }
@@ -3905,4 +3908,89 @@ body { overflow-x: hidden; color: var(--text); font-size: 14px; line-height: 1.5
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* Universal GlassCard and Admin/Public Card Containment */
+.glass-card {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.glass-card > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.glass-card-inner {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* When glass-card uses glass-card-inner, clear redundant outer padding on specific card classes */
+.latest-magnitude:has(.glass-card-inner),
+.latest-details:has(.glass-card-inner),
+.job-filter-card:has(.glass-card-inner),
+.audit-filter-card:has(.glass-card-inner) {
+  padding: 0 !important;
+}
+
+/* Fallback padding for any card with className glass-card that lacks glass-card-inner */
+.glass-card:not(:has(.glass-card-inner)) {
+  padding: 18px;
+}
+
+/* Run History Filter Bar Containment */
+.run-filter {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 850px) {
+  .run-filter {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .run-filter label {
+    flex: 1 1 200px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .run-filter select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Realtime Page Cards Containment */
+.realtime-list-panel,
+.latest-magnitude,
+.latest-details {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.latest-earthquake-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.detail-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.detail-item {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.detail-item strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, BookOpen, Clock3, ExternalLink, MapPin, RadioTower, RefreshCw } from 'lucide-react';
 import { getRealtimeFeed } from '../../api/services';
-import { PageHeader, SimulationTag, StatePanel, formatDate, formatNumber } from '../../components/ui';
+import { PageHeader, SimulationTag, StatePanel, GlassCard, formatDate, formatNumber } from '../../components/ui';
 import type { RealtimeEarthquake, RealtimeFeed } from '../../types/domain';
 import { statusLabel } from '../../utils/presentation';
 import { RealtimeEarthquakeMap } from '../../components/RealtimeEarthquakeMap';
@@ -137,7 +137,39 @@ export function RealtimePage() {
 }
 
 function LatestEarthquake({ item }: { item: RealtimeEarthquake }) {
-  return <div className="latest-earthquake-grid"><section className="latest-magnitude glass-card"><span className="eyebrow">GEMPA TERBARU</span><div className="magnitude-number">{formatNumber(item.magnitude, 1)}<small> M</small></div><h3>{item.region || 'Lokasi tidak tersedia'}</h3><p><Clock3 size={14} /> {item.date_local || '—'} · {item.time_local || 'Waktu tidak tersedia'}</p><div className="latest-coordinates"><span><MapPin size={14} /> {item.latitude_label || formatNumber(item.latitude, 2)}</span><span>{item.longitude_label || formatNumber(item.longitude, 2)}</span></div></section><section className="glass-card latest-details"><div className="card-heading"><div><h3>Detail kejadian</h3><p>Informasi sesuai data BMKG</p></div><span className="status-badge status-success"><i /> SUMBER BMKG</span></div><div className="detail-grid"><Detail label="Kedalaman" value={item.depth_label || (item.depth_km === null ? '—' : `${item.depth_km} km`)} /><Detail label="Potensi tsunami" value={item.tsunami_potential || 'Tidak tersedia'} /><Detail label="Dirasakan" value={item.felt || 'Tidak tersedia'} /><Detail label="Koordinat" value={`${formatNumber(item.latitude, 2)}, ${formatNumber(item.longitude, 2)}`} /></div>{item.shakemap_url && <a className="shakemap-link" href={item.shakemap_url} target="_blank" rel="noreferrer">Lihat peta guncangan <ExternalLink size={13} /></a>}</section></div>;
+  return (
+    <div className="latest-earthquake-grid">
+      <GlassCard className="latest-magnitude">
+        <span className="eyebrow">GEMPA TERBARU</span>
+        <div className="magnitude-number">{formatNumber(item.magnitude, 1)}<small> M</small></div>
+        <h3>{item.region || 'Lokasi tidak tersedia'}</h3>
+        <p><Clock3 size={14} /> {item.date_local || '—'} · {item.time_local || 'Waktu tidak tersedia'}</p>
+        <div className="latest-coordinates">
+          <span><MapPin size={14} /> {item.latitude_label || formatNumber(item.latitude, 2)}</span>
+          <span>{item.longitude_label || formatNumber(item.longitude, 2)}</span>
+        </div>
+      </GlassCard>
+
+      <GlassCard
+        className="latest-details"
+        title="Detail kejadian"
+        subtitle="Informasi sesuai data BMKG"
+        action={<span className="status-badge status-success"><i /> SUMBER BMKG</span>}
+      >
+        <div className="detail-grid">
+          <Detail label="Kedalaman" value={item.depth_label || (item.depth_km === null ? '—' : `${item.depth_km} km`)} />
+          <Detail label="Potensi tsunami" value={item.tsunami_potential || 'Tidak tersedia'} />
+          <Detail label="Dirasakan" value={item.felt || 'Tidak tersedia'} />
+          <Detail label="Koordinat" value={`${formatNumber(item.latitude, 2)}, ${formatNumber(item.longitude, 2)}`} />
+        </div>
+        {item.shakemap_url && (
+          <a className="shakemap-link" href={item.shakemap_url} target="_blank" rel="noreferrer">
+            Lihat peta guncangan <ExternalLink size={13} />
+          </a>
+        )}
+      </GlassCard>
+    </div>
+  );
 }
 
 function Detail({ label, value }: { label: string; value: string }) { return <div className="detail-item"><span>{label}</span><strong>{value}</strong></div>; }

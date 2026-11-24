@@ -177,11 +177,12 @@ export function JobManagementPage() {
       <StatCard label="Gagal" value={formatNumber(failedOnPage)} icon={<XCircle size={17} />} tone="violet" trend="Pada halaman ini" />
     </div>
 
-    <section className="glass-card job-filter-card">
-      <div className="card-heading">
-        <div><h3><Filter size={16} /> Filter proses</h3><p>Saring proses berdasarkan status, jenis, atau dataset.</p></div>
-        <button className="button button-secondary" type="button" onClick={resetFilters}>Reset filter</button>
-      </div>
+    <GlassCard
+      className="job-filter-card"
+      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Filter size={16} /> Filter proses</span>}
+      subtitle="Saring proses berdasarkan status, jenis, atau dataset."
+      action={<button className="button button-secondary" type="button" onClick={resetFilters}>Reset filter</button>}
+    >
       <form className="job-filter-grid" onSubmit={applyFilters}>
         <label>Status
           <select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value })}>
@@ -209,7 +210,7 @@ export function JobManagementPage() {
           <button className="button button-secondary" type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}><RefreshCw size={14} /> Muat ulang</button>
         </div>
       </form>
-    </section>
+    </GlassCard>
 
     <GlassCard title="Daftar proses" subtitle="Proses sebelumnya tetap dapat dibuka selama datanya tersedia.">
       {loading ? <StatePanel type="loading" title="Memuat daftar proses" message="Mengambil proses dan status terbaru." />
