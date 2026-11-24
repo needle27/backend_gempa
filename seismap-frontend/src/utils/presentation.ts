@@ -173,6 +173,11 @@ const FIELD_LABELS_ID: Record<string, string> = {
   knee_summary: 'Ringkasan Deteksi Knee', validity_thresholds: 'Ambang Validitas',
   recommendation_status: 'Status Rekomendasi', recommendation_weights: 'Bobot Rekomendasi',
   selected_experiment: 'Eksperimen Rekomendasi',
+  role: 'Peran', deactivated_at: 'Waktu Dinonaktifkan', task_id: 'ID Tugas',
+  min_samples_candidates: 'Kandidat MinPts', sensitivity_percentages: 'Persentase Sensitivitas',
+  eps_candidates_km: 'Kandidat Epsilon Eksplisit (km)', use_default_grid: 'Gunakan Grid Standar',
+  combination_count: 'Jumlah Kombinasi', valid_count: 'Jumlah Valid',
+  total_experiments: 'Total Eksperimen', recommended_experiment_id: 'ID Eksperimen Rekomendasi',
 };
 
 const FIELD_LABELS_EN: Record<string, string> = {
@@ -205,6 +210,11 @@ const FIELD_LABELS_EN: Record<string, string> = {
   knee_summary: 'Knee Detection Summary', validity_thresholds: 'Validity Thresholds',
   recommendation_status: 'Recommendation Status', recommendation_weights: 'Recommendation Weights',
   selected_experiment: 'Recommended Experiment',
+  role: 'Role', deactivated_at: 'Deactivated At', task_id: 'Task ID',
+  min_samples_candidates: 'MinPts Candidates', sensitivity_percentages: 'Sensitivity Percentages',
+  eps_candidates_km: 'Explicit Epsilon Candidates (km)', use_default_grid: 'Use Standard Grid',
+  combination_count: 'Combination Count', valid_count: 'Valid Count',
+  total_experiments: 'Total Experiments', recommended_experiment_id: 'Recommended Experiment ID',
 };
 
 const INVALID_REASON_LABELS_ID: Record<string, string> = {
@@ -360,14 +370,20 @@ export function actionLabel(value: string | null | undefined, lang: Language = g
   if (!value) return '—';
   const key = value.toUpperCase();
   const actionsId: Record<string, string> = {
-    ADMIN_LOGIN: 'Admin masuk', ADMIN_LOGOUT: 'Admin keluar', DATASET_UPLOAD: 'Unggah Dataset',
-    DATASET_VALIDATE: 'Validasi Dataset', DATASET_CREATE: 'Membuat Dataset', PARAMETER_SEARCH: 'Pencarian Parameter',
-    FINAL_CLUSTERING: 'Klasterisasi Final', RUN_ACTIVATE: 'Mengaktifkan Run', RUN_DEACTIVATE: 'Menonaktifkan Run',
+    ADMIN_LOGIN: 'Admin masuk', LOGIN: 'Admin masuk', ADMIN_LOGOUT: 'Admin keluar', LOGOUT: 'Admin keluar',
+    DATASET_UPLOAD: 'Unggah Dataset', DATASET_VALIDATE: 'Validasi Dataset', DATASET_CREATE: 'Membuat Dataset',
+    PARAMETER_SEARCH: 'Pencarian Parameter', FINAL_CLUSTERING: 'Klasterisasi Final',
+    RUN_ACTIVATE: 'Mengaktifkan Run', ACTIVATE_RUN: 'Mengaktifkan Run', RUN_DEACTIVATE: 'Menonaktifkan Run',
+    JOB_PAUSE: 'Jeda Proses', JOB_RESUME: 'Lanjutkan Proses', JOB_STOP: 'Hentikan Proses',
+    JOB_CANCEL: 'Batalkan Proses', JOB_RESTART: 'Mulai Ulang Proses',
   };
   const actionsEn: Record<string, string> = {
-    ADMIN_LOGIN: 'Admin Login', ADMIN_LOGOUT: 'Admin Logout', DATASET_UPLOAD: 'Upload Dataset',
-    DATASET_VALIDATE: 'Validate Dataset', DATASET_CREATE: 'Create Dataset', PARAMETER_SEARCH: 'Parameter Search',
-    FINAL_CLUSTERING: 'Final Clustering', RUN_ACTIVATE: 'Activate Run', RUN_DEACTIVATE: 'Deactivate Run',
+    ADMIN_LOGIN: 'Admin Login', LOGIN: 'Admin Login', ADMIN_LOGOUT: 'Admin Logout', LOGOUT: 'Admin Logout',
+    DATASET_UPLOAD: 'Upload Dataset', DATASET_VALIDATE: 'Validate Dataset', DATASET_CREATE: 'Create Dataset',
+    PARAMETER_SEARCH: 'Parameter Search', FINAL_CLUSTERING: 'Final Clustering',
+    RUN_ACTIVATE: 'Activate Run', ACTIVATE_RUN: 'Activate Run', RUN_DEACTIVATE: 'Deactivate Run',
+    JOB_PAUSE: 'Pause Job', JOB_RESUME: 'Resume Job', JOB_STOP: 'Stop Job',
+    JOB_CANCEL: 'Cancel Job', JOB_RESTART: 'Restart Job',
   };
   return (lang === 'en' ? actionsEn : actionsId)[key] || humanizeCode(value);
 }
@@ -397,7 +413,42 @@ export function friendlyErrorMessage(
       ? 'An unexpected issue occurred. Please try again.'
       : 'Terjadi kendala yang belum dapat dijelaskan. Silakan coba lagi.';
   }
-  if (/failed to fetch|networkerror|network request failed|load failed|connection refused/.test(normalized)) return errorLabels.NETWORK_ERROR;
+  if (/failed to fetch|networkerror|network request failed|load failed|connection refused|tidak dapat terhubung ke server/.test(normalized)) return errorLabels.NETWORK_ERROR;
+  if (/belum ada hasil dbscan aktif/.test(normalized)) {
+    return lang === 'en'
+      ? 'No active DBSCAN run has been published yet. WebGIS will display results after an administrator activates a successful run.'
+      : raw;
+  }
+  if (/format data dari server tidak sesuai/.test(normalized)) return errorLabels.INVALID_RESPONSE;
+  if (/sesi administrator telah berakhir/.test(normalized)) return errorLabels.UNAUTHORIZED;
+  if (/terjadi kesalahan\.?$/.test(normalized)) {
+    return lang === 'en' ? 'An unexpected error occurred.' : raw;
+  }
+  if (/tidak dapat memuat status proses/.test(normalized)) {
+    return lang === 'en' ? 'Unable to load job status.' : raw;
+  }
+  if (/catatan aktivitas belum dapat ditampilkan/.test(normalized)) {
+    return lang === 'en'
+      ? 'Activity logs cannot be displayed because the server response format was unexpected. Try again or contact an administrator.'
+      : raw;
+  }
+  if (/daftar proses (tidak dapat dibaca|dari server belum dapat ditampilkan)/.test(normalized)) {
+    return lang === 'en'
+      ? 'Unable to read the job list from the server. Reload the page or try again.'
+      : raw;
+  }
+  const httpMatch = raw.match(/^Permintaan gagal \(HTTP (\d+)\)\.?$/i);
+  if (httpMatch) {
+    return lang === 'en' ? `Request failed (HTTP ${httpMatch[1]}).` : raw;
+  }
+  if (/artefak analisis belum tersedia/.test(normalized)) {
+    return lang === 'en'
+      ? 'Analysis artifacts are not available for this job. Legacy jobs created before the Elbow feature have no stored curves.'
+      : raw;
+  }
+  if (/ringkasan analisis( k-distance)? gagal dimuat/.test(normalized)) {
+    return lang === 'en' ? 'Failed to load k-Distance analysis summary.' : raw;
+  }
   if (/timed? ?out|timeout/.test(normalized)) {
     return lang === 'en'
       ? 'The request timed out. Please try again.'

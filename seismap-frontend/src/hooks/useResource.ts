@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getActiveLanguage } from '../i18n/LanguageContext';
 import {
   callWithForceRefresh,
   getCacheScope,
@@ -56,7 +57,15 @@ export function useResource<T>(loader: () => Promise<T>, dependencies: unknown[]
         }
       })
       .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : 'Terjadi kesalahan.');
+        if (active) {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : getActiveLanguage() === 'en'
+                ? 'An unexpected error occurred.'
+                : 'Terjadi kesalahan.',
+          );
+        }
       })
       .finally(() => {
         if (active) setLoading(false);

@@ -97,10 +97,19 @@ export interface RequestOptions extends RequestInit {
   csrf?: 'access' | 'refresh' | false;
 }
 
+import { getActiveLanguage } from '../i18n/LanguageContext';
+
+function pickLang(id: string, en: string): string {
+  return getActiveLanguage() === 'en' ? en : id;
+}
+
 function getPublicRunError(path: string, status: number, code?: string): string | undefined {
   if (status !== 404 || code !== 'NOT_FOUND') return undefined;
   if (['/api/metadata', '/api/summary', '/api/profil', '/api/gempa'].some((route) => path.startsWith(route))) {
-    return 'Belum ada hasil DBSCAN aktif yang dipublikasikan. WebGIS akan menampilkan hasil setelah administrator mengaktifkan eksekusi yang berhasil.';
+    return pickLang(
+      'Belum ada hasil DBSCAN aktif yang dipublikasikan. WebGIS akan menampilkan hasil setelah administrator mengaktifkan eksekusi yang berhasil.',
+      'No active DBSCAN run has been published yet. WebGIS will display results after an administrator activates a successful run.',
+    );
   }
   return undefined;
 }
@@ -122,17 +131,23 @@ async function parseResponse<T>(response: Response, path: string): Promise<ApiEn
       || (typeof meta?.message === 'string' ? meta.message : undefined)
       || (typeof jwtBody?.msg === 'string' ? jwtBody.msg : undefined)
       || (typeof jwtBody?.message === 'string' ? jwtBody.message : undefined)
-      || `Permintaan gagal (HTTP ${response.status}).`;
+      || pickLang(`Permintaan gagal (HTTP ${response.status}).`, `Request failed (HTTP ${response.status}).`);
     const details = meta?.details && typeof meta.details === 'object'
       ? meta.details
       : jwtBody?.details && typeof jwtBody.details === 'object'
         ? jwtBody.details as Record<string, unknown>
         : undefined;
-    throw new ApiError(friendlyErrorMessage(message, code, response.status), response.status, code, details, requestId);
+    throw new ApiError(friendlyErrorMessage(message, code, response.status, getActiveLanguage()), response.status, code, details, requestId);
   }
 
   if (!envelope || !('data' in envelope) || !meta) {
-    throw new ApiError('Format data dari server tidak sesuai. Silakan coba lagi.', response.status, 'INVALID_RESPONSE', undefined, requestId);
+    throw new ApiError(
+      pickLang('Format data dari server tidak sesuai. Silakan coba lagi.', 'Server response format was unexpected. Please try again.'),
+      response.status,
+      'INVALID_RESPONSE',
+      undefined,
+      requestId,
+    );
   }
 
   const csrfHeader = response.headers.get('X-CSRF-TOKEN');
@@ -191,7 +206,14 @@ async function sendOnce<T>(path: string, options: RequestOptions = {}): Promise<
       credentials: 'include',
     });
   } catch {
-    throw new ApiError('Tidak dapat terhubung ke server. Periksa koneksi dan pastikan server sedang berjalan.', 0, 'NETWORK_ERROR');
+    throw new ApiError(
+      pickLang(
+        'Tidak dapat terhubung ke server. Periksa koneksi dan pastikan server sedang berjalan.',
+        'Unable to reach the server. Check your connection and verify the server is running.',
+      ),
+      0,
+      'NETWORK_ERROR',
+    );
   }
   return parseResponse<T>(response, path);
 }
@@ -259,7 +281,14 @@ export async function apiRequestEnvelope<T>(path: string, options: RequestOption
       await waitForRetry(backoffMs, options.signal);
     }
   }
-  throw new ApiError('Tidak dapat terhubung ke server. Periksa koneksi dan pastikan server sedang berjalan.', 0, 'NETWORK_ERROR');
+  throw new ApiError(
+    pickLang(
+      'Tidak dapat terhubung ke server. Periksa koneksi dan pastikan server sedang berjalan.',
+      'Unable to reach the server. Check your connection and verify the server is running.',
+    ),
+    0,
+    'NETWORK_ERROR',
+  );
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {

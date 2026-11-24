@@ -1,10 +1,15 @@
 import { apiRequest, apiRequestEnvelope } from './client';
+import { getActiveLanguage } from '../i18n/LanguageContext';
 import type { AdminUser } from '../types/domain';
 
 function normalizeUser(payload: AdminUser | { user?: AdminUser }): AdminUser {
   const candidate = 'user' in payload && payload.user ? payload.user : payload;
   if (!candidate || typeof candidate !== 'object' || !('id' in candidate) || !('role' in candidate)) {
-    throw new Error('Informasi akun administrator dari server tidak dapat dibaca. Silakan masuk kembali.');
+    throw new Error(
+      getActiveLanguage() === 'en'
+        ? 'Administrator account details from the server could not be read. Please sign in again.'
+        : 'Informasi akun administrator dari server tidak dapat dibaca. Silakan masuk kembali.',
+    );
   }
   return candidate as AdminUser;
 }

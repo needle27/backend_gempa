@@ -149,7 +149,7 @@ export function FinalDbscanPage() {
       setAvailableJobs([]);
       setJobsHasMore(false);
       setJobsTotal(null);
-      setJobsError(reason instanceof Error ? reason.message : 'Daftar proses Pencarian Parameter gagal dimuat.');
+      setJobsError(reason instanceof Error ? reason.message : tx('Daftar proses Pencarian Parameter gagal dimuat.', 'Failed to load Parameter Search job list.'));
     }).finally(() => {
       if (active) setJobsLoading(false);
     });
@@ -174,7 +174,7 @@ export function FinalDbscanPage() {
     }
     if (!effectiveDatasetId) {
       setSourceLoading(false);
-      setSourceError('Pilih dataset terlebih dahulu sebelum membuka eksperimen.');
+      setSourceError(tx('Pilih dataset terlebih dahulu sebelum membuka eksperimen.', 'Select a dataset before loading experiments.'));
       return () => { active = false; };
     }
 
@@ -186,17 +186,29 @@ export function FinalDbscanPage() {
         setSourceJob(job);
 
         if (job.job_type !== 'PARAMETER_SEARCH') {
-          setSourceError(`Proses #${job.id} bukan Pencarian Parameter. Pilih proses Pencarian Parameter dari daftar pada halaman ini.`);
+          setSourceError(tx(
+            `Proses #${job.id} bukan Pencarian Parameter. Pilih proses Pencarian Parameter dari daftar pada halaman ini.`,
+            `Job #${job.id} is not a Parameter Search job. Choose a Parameter Search job from the list on this page.`,
+          ));
           return;
         }
         if (job.dataset_id !== effectiveDatasetId) {
-          setSourceError(`Proses #${job.id} berasal dari Dataset #${job.dataset_id}, sedangkan dataset yang dipilih adalah #${effectiveDatasetId}. Pilih proses dari dataset yang sesuai.`);
+          setSourceError(tx(
+            `Proses #${job.id} berasal dari Dataset #${job.dataset_id}, sedangkan dataset yang dipilih adalah #${effectiveDatasetId}. Pilih proses dari dataset yang sesuai.`,
+            `Job #${job.id} belongs to Dataset #${job.dataset_id}, while the selected dataset is #${effectiveDatasetId}. Choose a job from the matching dataset.`,
+          ));
           return;
         }
         if (job.status !== 'SUCCESS') {
           setSourceError(job.status === 'FAILED'
-            ? `Pencarian Parameter pada proses #${job.id} gagal. Periksa rinciannya di Manajemen Proses bila diperlukan.`
-            : `Hasil eksperimen baru dapat digunakan setelah proses #${job.id} berhasil. Status saat ini: ${statusLabel(job.status)}.`);
+            ? tx(
+              `Pencarian Parameter pada proses #${job.id} gagal. Periksa rinciannya di Manajemen Proses bila diperlukan.`,
+              `Parameter Search on job #${job.id} failed. Inspect details in Job Management if needed.`,
+            )
+            : tx(
+              `Hasil eksperimen baru dapat digunakan setelah proses #${job.id} berhasil. Status saat ini: ${statusLabel(job.status, lang)}.`,
+              `Experiments can only be used after job #${job.id} succeeds. Current status: ${statusLabel(job.status, lang)}.`,
+            ));
           return;
         }
 
@@ -205,14 +217,20 @@ export function FinalDbscanPage() {
         const matchingRows = rows.filter((item) => item.dataset_id === job.dataset_id && item.job_id === job.id);
         setExperiments(matchingRows);
         if (matchingRows.length !== rows.length) {
-          setSourceError('Sebagian hasil eksperimen tidak sesuai dengan dataset atau proses sumber sehingga tidak ditampilkan. Periksa konsistensi data pada sistem.');
+          setSourceError(tx(
+            'Sebagian hasil eksperimen tidak sesuai dengan dataset atau proses sumber sehingga tidak ditampilkan. Periksa konsistensi data pada sistem.',
+            'Some experiments did not match the source dataset or job and were omitted. Check system data consistency.',
+          ));
         }
         if (!matchingRows.some((item) => item.is_valid)) {
-          setSourceError('Proses selesai, tetapi tidak memiliki eksperimen valid yang sesuai dengan dataset ini. Periksa hasil evaluasinya bila diperlukan.');
+          setSourceError(tx(
+            'Proses selesai, tetapi tidak memiliki eksperimen valid yang sesuai dengan dataset ini. Periksa hasil evaluasinya bila diperlukan.',
+            'The job finished, but returned no valid experiments for this dataset. Review its evaluation outcomes if needed.',
+          ));
         }
       } catch (reason) {
         if (!active) return;
-        setSourceError(reason instanceof Error ? reason.message : 'Proses sumber atau hasil eksperimen gagal dimuat.');
+        setSourceError(reason instanceof Error ? reason.message : tx('Proses sumber atau hasil eksperimen gagal dimuat.', 'Failed to load source job or experiment results.'));
       } finally {
         if (active) setSourceLoading(false);
       }
@@ -336,11 +354,17 @@ export function FinalDbscanPage() {
     event.preventDefault();
     setError(null);
     if (!effectiveDatasetId || !selectedExperiment || !sourceJob || sourceJob.status !== 'SUCCESS') {
-      setError('Pilih dataset dan eksperimen valid dari proses Pencarian Parameter yang berhasil dan berasal dari dataset yang sama.');
+      setError(tx(
+        'Pilih dataset dan eksperimen valid dari proses Pencarian Parameter yang berhasil dan berasal dari dataset yang sama.',
+        'Select a dataset and a valid experiment from a completed Parameter Search job on the same dataset.',
+      ));
       return;
     }
     if (activeFinalJob || restoringFinalJob || finalJobStatusUnknown) {
-      setError('Status proses DBSCAN Final sebelumnya belum dapat dipastikan aman untuk membuat eksekusi baru. Periksa Manajemen Proses terlebih dahulu.');
+      setError(tx(
+        'Status proses DBSCAN Final sebelumnya belum dapat dipastikan aman untuk membuat eksekusi baru. Periksa Manajemen Proses terlebih dahulu.',
+        'Previous Final DBSCAN job state could not be confirmed safe for launching a new run. Check Job Management first.',
+      ));
       return;
     }
 
@@ -357,7 +381,10 @@ export function FinalDbscanPage() {
         setJobId(existingActiveJob.id);
         setRunId(existingActiveJob.run_id);
         if (jobId === existingActiveJob.id) jobState.reload();
-        setError(`Ditemukan Klasterisasi Final yang belum selesai untuk Dataset #${effectiveDatasetId}. Proses #${existingActiveJob.id} dipulihkan; tidak membuat proses baru.`);
+        setError(tx(
+          `Ditemukan Klasterisasi Final yang belum selesai untuk Dataset #${effectiveDatasetId}. Proses #${existingActiveJob.id} dipulihkan; tidak membuat proses baru.`,
+          `An unfinished Final Clustering job already exists for Dataset #${effectiveDatasetId}. Job #${existingActiveJob.id} was restored instead of starting a new one.`,
+        ));
         return;
       }
 
@@ -371,14 +398,23 @@ export function FinalDbscanPage() {
           setJobId(existingJobId);
           setRunId(null);
           if (jobId === existingJobId) jobState.reload();
-          setError(`Sistem mencegah eksekusi ganda dan menemukan proses yang belum selesai (#${existingJobId}). Statusnya sedang dipulihkan.`);
+          setError(tx(
+            `Sistem mencegah eksekusi ganda dan menemukan proses yang belum selesai (#${existingJobId}). Statusnya sedang dipulihkan.`,
+            `Duplicate execution prevented; found unfinished job #${existingJobId}. Restoring its status.`,
+          ));
         } else {
           setError(reason.message);
         }
       } else {
         setError(reason instanceof Error
-          ? `DBSCAN Final tidak dikirim karena pemeriksaan proses aktif gagal: ${reason.message}`
-          : 'DBSCAN Final tidak dikirim karena status proses aktif tidak dapat dipastikan.');
+          ? tx(
+            `DBSCAN Final tidak dikirim karena pemeriksaan proses aktif gagal: ${reason.message}`,
+            `Final DBSCAN was not dispatched because checking active jobs failed: ${reason.message}`,
+          )
+          : tx(
+            'DBSCAN Final tidak dikirim karena status proses aktif tidak dapat dipastikan.',
+            'Final DBSCAN was not dispatched because active job state could not be verified.',
+          ));
       }
     } finally {
       setBusy(false);

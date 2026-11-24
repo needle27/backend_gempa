@@ -66,7 +66,7 @@ export function JobManagementPage() {
       if (active) setJobs(result);
     }).catch((reason: unknown) => {
       if (active && (isFilterChange || !jobs)) {
-        setError(reason instanceof Error ? reason.message : 'Daftar proses gagal dimuat.');
+        setError(reason instanceof Error ? reason.message : tx('Daftar proses gagal dimuat.', 'Failed to load job list.'));
       }
     }).finally(() => {
       if (active) setLoading(false);
@@ -108,7 +108,7 @@ export function JobManagementPage() {
     getExperiments(selectedJob.id).then((items) => {
       if (active) setExperiments(items);
     }).catch((reason: unknown) => {
-      if (active) setExperimentsError(reason instanceof Error ? reason.message : 'Hasil eksperimen gagal dimuat.');
+      if (active) setExperimentsError(reason instanceof Error ? reason.message : tx('Hasil eksperimen gagal dimuat.', 'Failed to load experiment results.'));
     }).finally(() => {
       if (active) setExperimentsLoading(false);
     });
@@ -120,7 +120,7 @@ export function JobManagementPage() {
     setFilterError(null);
     const datasetText = draft.dataset_id.trim();
     if (datasetText && (!/^\d+$/.test(datasetText) || Number(datasetText) < 1)) {
-      setFilterError('ID Dataset harus berupa integer positif.');
+      setFilterError(tx('ID Dataset harus berupa integer positif.', 'Dataset ID must be a positive integer.'));
       return;
     }
     setPage(1);

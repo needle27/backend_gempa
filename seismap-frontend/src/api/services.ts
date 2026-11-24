@@ -1,7 +1,12 @@
 import { API_BASE_URL, IS_PREVIEW_MODE } from '../config/env';
 import { apiRequest, apiRequestEnvelope } from './client';
 import { ApiError } from '../types/api';
+import { getActiveLanguage } from '../i18n/LanguageContext';
 import { friendlyErrorMessage } from '../utils/presentation';
+
+function pickLang(id: string, en: string): string {
+  return getActiveLanguage() === 'en' ? en : id;
+}
 import {
   clearMapDataIndexedDb,
   clearNamespaceCache,
@@ -42,7 +47,7 @@ function handlePublicMetadataSync(metadata: PublicMetadata): void {
 }
 
 function assertLiveMutation(): void {
-  if (IS_PREVIEW_MODE) throw new Error('Operasi dinonaktifkan pada Mode Pratinjau.');
+  if (IS_PREVIEW_MODE) throw new Error(pickLang('Operasi dinonaktifkan pada Mode Pratinjau.', 'Write operations are disabled in Preview Mode.'));
 }
 
 export async function getPublicMetadata(options?: CacheRequestOptions): Promise<PublicMetadata> {
@@ -224,11 +229,11 @@ function firstBoolean(...values: unknown[]): boolean | null {
 function extractJobRows(data: unknown): ProcessingJob[] {
   if (Array.isArray(data)) return data as ProcessingJob[];
   const record = recordOf(data);
-  if (!record) throw new Error('Daftar proses tidak dapat dibaca. Muat ulang halaman atau coba lagi.');
+  if (!record) throw new Error(pickLang('Daftar proses tidak dapat dibaca. Muat ulang halaman atau coba lagi.', 'Unable to parse job list. Reload the page or try again.'));
   for (const key of ['items', 'jobs', 'results', 'data']) {
     if (Array.isArray(record[key])) return record[key] as ProcessingJob[];
   }
-  throw new Error('Daftar proses dari server belum dapat ditampilkan. Silakan coba lagi atau hubungi administrator.');
+  throw new Error(pickLang('Daftar proses dari server belum dapat ditampilkan. Silakan coba lagi atau hubungi administrator.', 'Server job list cannot be displayed yet. Try again or contact an administrator.'));
 }
 
 export async function getJobs(
@@ -290,7 +295,7 @@ export async function getJob(
   jobId: number,
   options?: { cacheTerminal?: boolean; forceRefresh?: boolean },
 ): Promise<ProcessingJob> {
-  if (IS_PREVIEW_MODE) return { id: jobId, dataset_id: 1, run_id: null, job_type: 'PARAMETER_SEARCH', status: 'SUCCESS', progress: 100, current_step: 'PREPARING', message: 'Ini adalah status simulasi untuk memeriksa tampilan. Tidak ada proses yang dijalankan.', error_code: null, created_at: null, started_at: null, finished_at: null };
+  if (IS_PREVIEW_MODE) return { id: jobId, dataset_id: 1, run_id: null, job_type: 'PARAMETER_SEARCH', status: 'SUCCESS', progress: 100, current_step: 'PREPARING', message: pickLang('Ini adalah status simulasi untuk memeriksa tampilan. Tidak ada proses yang dijalankan.', 'This is a simulated status for UI inspection. No backend job is running.'), error_code: null, created_at: null, started_at: null, finished_at: null };
   if (!options?.cacheTerminal) {
     return apiRequest<ProcessingJob>(`/api/admin/jobs/${jobId}`);
   }
@@ -383,13 +388,13 @@ function requiredText(value: unknown, fallback = ''): string {
 function normalizeApiPath(value: string): string {
   const resolved = new URL(value, `${API_BASE_URL}/`);
   if (resolved.origin !== new URL(API_BASE_URL).origin) {
-    throw new Error('Tautan analisis dari server tidak berasal dari API SEISMAP.');
+    throw new Error(pickLang('Tautan analisis dari server tidak berasal dari API SEISMAP.', 'Analysis URL from the server does not originate from the SEISMAP API.'));
   }
   return `${resolved.pathname}${resolved.search}`;
 }
 
 export async function getElbowSummary(jobId: number, options?: CacheRequestOptions): Promise<ElbowSummary> {
-  if (IS_PREVIEW_MODE) throw new Error('Analisis K-Distance hanya tersedia pada koneksi backend aktif.');
+  if (IS_PREVIEW_MODE) throw new Error(pickLang('Analisis K-Distance hanya tersedia pada koneksi backend aktif.', 'k-Distance analysis is only available with a live backend connection.'));
   return resolveCachedResource(
     {
       namespace: 'admin',
@@ -402,7 +407,7 @@ export async function getElbowSummary(jobId: number, options?: CacheRequestOptio
       const raw = await apiRequest<unknown>(`/api/admin/jobs/${jobId}/elbow`);
       const record = recordOf(raw);
       if (!record || !Array.isArray(record.curves)) {
-        throw new Error('Ringkasan analisis K-Distance dari server belum sesuai format.');
+        throw new Error(pickLang('Ringkasan analisis K-Distance dari server belum sesuai format.', 'Server k-Distance analysis summary format was unexpected.'));
       }
 
       const curves = record.curves.flatMap((item): ElbowCurveSummary[] => {
@@ -437,7 +442,7 @@ export async function getElbowSummary(jobId: number, options?: CacheRequestOptio
 }
 
 export async function getElbowDetail(detailUrl: string, options?: CacheRequestOptions): Promise<ElbowDetailRecord> {
-  if (IS_PREVIEW_MODE) throw new Error('Rincian analisis tidak tersedia pada Mode Pratinjau.');
+  if (IS_PREVIEW_MODE) throw new Error(pickLang('Rincian analisis tidak tersedia pada Mode Pratinjau.', 'Analysis details are unavailable in Preview Mode.'));
   const path = normalizeApiPath(detailUrl);
   return resolveCachedResource(
     {
@@ -449,17 +454,17 @@ export async function getElbowDetail(detailUrl: string, options?: CacheRequestOp
     async () => {
       const raw = await apiRequest<unknown>(path);
       const record = recordOf(raw);
-      if (!record) throw new Error('Rincian kurva dari server belum sesuai format.');
+      if (!record) throw new Error(pickLang('Rincian kurva dari server belum sesuai format.', 'Curve detail format from the server was unexpected.'));
       return record;
     },
   );
 }
 
 export async function fetchElbowArtifact(artifactUrl: string): Promise<Blob> {
-  if (IS_PREVIEW_MODE) throw new Error('Unduhan artefak tidak tersedia pada Mode Pratinjau.');
+  if (IS_PREVIEW_MODE) throw new Error(pickLang('Unduhan artefak tidak tersedia pada Mode Pratinjau.', 'Artifact downloads are unavailable in Preview Mode.'));
   const target = new URL(artifactUrl, `${API_BASE_URL}/`);
   if (target.origin !== new URL(API_BASE_URL).origin) {
-    throw new Error('Tautan unduhan tidak berasal dari server SEISMAP.');
+    throw new Error(pickLang('Tautan unduhan tidak berasal dari server SEISMAP.', 'Download URL does not originate from the SEISMAP server.'));
   }
 
   const request = () => fetch(target.toString(), { method: 'GET', credentials: 'include' });
@@ -470,7 +475,7 @@ export async function fetchElbowArtifact(artifactUrl: string): Promise<Blob> {
       response = await request();
     } catch {
       if (typeof window !== 'undefined') window.dispatchEvent(new Event('seismap:auth-expired'));
-      throw new ApiError('Sesi administrator telah berakhir. Silakan masuk kembali.', 401, 'UNAUTHORIZED');
+      throw new ApiError(pickLang('Sesi administrator telah berakhir. Silakan masuk kembali.', 'Administrator session has expired. Please sign in again.'), 401, 'UNAUTHORIZED');
     }
   }
 
@@ -482,9 +487,9 @@ export async function fetchElbowArtifact(artifactUrl: string): Promise<Blob> {
     try { body = await response.json(); } catch { /* Respons unduhan dapat berupa teks biasa. */ }
     const envelope = recordOf(body);
     const meta = recordOf(envelope?.meta);
-    const message = requiredText(meta?.message, `Unduhan artefak gagal (HTTP ${response.status}).`);
+    const message = requiredText(meta?.message, pickLang(`Unduhan artefak gagal (HTTP ${response.status}).`, `Artifact download failed (HTTP ${response.status}).`));
     const code = requiredText(meta?.code, 'ARTIFACT_DOWNLOAD_FAILED');
-    throw new ApiError(friendlyErrorMessage(message, code, response.status), response.status, code, recordOf(meta?.details));
+    throw new ApiError(friendlyErrorMessage(message, code, response.status, getActiveLanguage()), response.status, code, recordOf(meta?.details));
   }
   return response.blob();
 }
@@ -571,7 +576,12 @@ export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<Audit
   });
   const result = await apiRequestEnvelope<AuditLogRecord[]>(`/api/admin/audit-logs?${params.toString()}`);
   if (!Array.isArray(result.data)) {
-    throw new Error('Catatan aktivitas belum dapat ditampilkan karena format data dari server belum sesuai. Silakan coba lagi atau hubungi administrator.');
+    throw new Error(
+      pickLang(
+        'Catatan aktivitas belum dapat ditampilkan karena format data dari server belum sesuai. Silakan coba lagi atau hubungi administrator.',
+        'Activity logs cannot be displayed because the server response format was unexpected. Try again or contact an administrator.',
+      ),
+    );
   }
   const items = result.data;
   return {

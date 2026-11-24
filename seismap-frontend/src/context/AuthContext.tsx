@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ApiError } from '../types/api';
 import type { AdminUser } from '../types/domain';
+import { getActiveLanguage } from '../i18n/LanguageContext';
 import { IS_PREVIEW_MODE } from '../config/env';
 import { hasCsrfCookie, clearAuthTokens } from '../api/client';
 import { getCurrentUser, login as loginRequest, logout as logoutRequest, refreshSession } from '../api/auth';
@@ -62,7 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [reloadUser]);
 
   const signIn = useCallback(async (identity: string, password: string) => {
-    if (IS_PREVIEW_MODE) throw new Error('Login tidak dijalankan pada Mode Pratinjau.');
+    if (IS_PREVIEW_MODE) {
+      throw new Error(
+        getActiveLanguage() === 'en'
+          ? 'Sign-in is disabled in Preview Mode.'
+          : 'Login tidak dijalankan pada Mode Pratinjau.',
+      );
+    }
     await loginRequest(identity, password);
     setUser(await getCurrentUser());
   }, []);

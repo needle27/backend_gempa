@@ -12,9 +12,10 @@ import type { ElbowCurveSummary, ElbowDetailRecord, ElbowSummary } from '../api/
 import type { ParameterExperiment, ParameterSearchMetadata } from '../types/domain';
 import { resolveExperimentProvenance } from '../utils/parameterSearchMetadata';
 import { IS_PREVIEW_MODE } from '../config/env';
-import { useI18n } from '../i18n/LanguageContext';
+import { getActiveLanguage, useI18n } from '../i18n/LanguageContext';
 import type { Language } from '../i18n/types';
 import { invalidateCachePrefix } from '../utils/resourceCache';
+import { friendlyErrorMessage } from '../utils/presentation';
 import { GlassCard, StatePanel, StatusBadge, formatNumber } from './ui';
 import { ApiError } from '../types/api';
 
@@ -79,14 +80,14 @@ function kneeRank(detail: ElbowDetailRecord | null): number | null {
     ?? readFirstNumber(kneePoint, ['rank']);
 }
 
-function configurationEntries(detail: ElbowDetailRecord | null): Array<{ label: string; value: string }> {
+function configurationEntries(detail: ElbowDetailRecord | null, lang: Language): Array<{ label: string; value: string }> {
   const metadata = detailMetadata(detail);
   const configuration = asRecord(detail?.search_configuration) ?? asRecord(metadata?.search_configuration);
   if (!configuration) return [];
   const fields: Array<{ keys: string[]; label: string }> = [
-    { keys: ['min_samples_candidates'], label: 'Kandidat MinPts' },
-    { keys: ['sensitivity_percentages'], label: 'Persentase sensitivitas' },
-    { keys: ['eps_candidates_km'], label: 'Kandidat Epsilon eksplisit' },
+    { keys: ['min_samples_candidates'], label: lang === 'en' ? 'MinPts Candidates' : 'Kandidat MinPts' },
+    { keys: ['sensitivity_percentages'], label: lang === 'en' ? 'Sensitivity Percentages' : 'Persentase sensitivitas' },
+    { keys: ['eps_candidates_km'], label: lang === 'en' ? 'Explicit Epsilon Candidates' : 'Kandidat Epsilon eksplisit' },
   ];
   return fields.flatMap(({ keys, label }) => {
     const key = keys.find((candidate) => configuration[candidate] !== undefined && configuration[candidate] !== null);
@@ -149,7 +150,7 @@ function downloadName(jobId: number, minSamples: number, extension: string): str
 function CurveStatus({ curve, lang }: { curve: ElbowCurveSummary; lang: Language }) {
   return curve.knee_detected
     ? <span className="elbow-knee-status is-detected"><CheckCircle2 size={13} /> {lang === 'en' ? 'Knee point detected' : 'Titik Knee terdeteksi'}</span>
-    : <span className="elbow-knee-status is-missing"><AlertCircle size={13} /> Knee Point Not Detected</span>;
+    : <span className="elbow-knee-status is-missing"><AlertCircle size={13} /> {lang === 'en' ? 'Knee point not detected' : 'Titik Knee tidak terdeteksi'}</span>;
 }
 
 export function ElbowAnalysisPanel({
@@ -199,9 +200,19 @@ export function ElbowAnalysisPanel({
     }).catch((reason: unknown) => {
       if (!active) return;
       if (reason instanceof ApiError && (reason.status === 404 || reason.code === 'NOT_FOUND')) {
-        setSummaryError('Artefak analisis belum tersedia untuk proses ini. Job lama yang dibuat sebelum fitur Elbow tersedia memang tidak memiliki grafik tersimpan.');
+        setSummaryError(
+          getActiveLanguage() === 'en'
+            ? 'Analysis artifacts are not available for this job. Legacy jobs created before the Elbow feature have no stored curves.'
+            : 'Artefak analisis belum tersedia untuk proses ini. Job lama yang dibuat sebelum fitur Elbow tersedia memang tidak memiliki grafik tersimpan.',
+        );
       } else {
-        setSummaryError(reason instanceof Error ? reason.message : 'Ringkasan analisis K-Distance gagal dimuat.');
+        setSummaryError(
+          reason instanceof Error
+            ? reason.message
+            : getActiveLanguage() === 'en'
+              ? 'Failed to load k-Distance analysis summary.'
+              : 'Ringkasan analisis K-Distance gagal dimuat.',
+        );
       }
     }).finally(() => { if (active) setSummaryLoading(false); });
 
@@ -229,13 +240,21 @@ export function ElbowAnalysisPanel({
         const curve = queue[index];
         let state: DetailState;
         if (!curve.detail_url) {
-          state = { record: null, error: 'Tautan rincian kurva tidak disediakan server.' };
+          state = {
+            record: null,
+            error: getActiveLanguage() === 'en' ? 'Curve detail link was not provided by the server.' : 'Tautan rincian kurva tidak disediakan server.',
+          };
         } else {
           try {
             const record = await getElbowDetail(curve.detail_url);
             state = { record, error: null };
           } catch (reason) {
-            state = { record: null, error: reason instanceof Error ? reason.message : 'Rincian kurva gagal dimuat.' };
+            state = {
+              record: null,
+              error: reason instanceof Error
+                ? reason.message
+                : getActiveLanguage() === 'en' ? 'Failed to load curve details.' : 'Rincian kurva gagal dimuat.',
+            };
           }
         }
         if (active) {
@@ -255,7 +274,7 @@ export function ElbowAnalysisPanel({
   const selectedPoints = useMemo(() => previewPoints(selectedDetail), [selectedDetail]);
   const selectedKneeRank = kneeRank(selectedDetail);
   const comparisonRows = useMemo(() => summary ? buildComparisonRows(summary.curves, details) : [], [summary, details]);
-  const selectedConfig = useMemo(() => configurationEntries(selectedDetail), [selectedDetail]);
+  const selectedConfig = useMemo(() => configurationEntries(selectedDetail, lang), [selectedDetail, lang]);
   const matchingExperiments = useMemo(() => selectedCurve
     ? (experiments || []).filter((experiment) => experiment.min_samples === selectedCurve.min_samples)
     : [], [experiments, selectedCurve]);
@@ -268,7 +287,7 @@ export function ElbowAnalysisPanel({
       const blob = await fetchElbowArtifact(url);
       saveBlob(blob, filename);
     } catch (reason) {
-      setDownloadError(reason instanceof Error ? reason.message : 'Unduhan artefak gagal.');
+      setDownloadError(reason instanceof Error ? reason.message : tx('Unduhan artefak gagal.', 'Artifact download failed.'));
     } finally {
       setDownloadBusy(null);
     }
@@ -294,8 +313,8 @@ export function ElbowAnalysisPanel({
       setSelectedMinSamples(result.curves[0]?.min_samples ?? null);
     }).catch((reason: unknown) => {
       if (reason instanceof ApiError && (reason.status === 404 || reason.code === 'NOT_FOUND')) {
-        setSummaryError('Artefak analisis belum tersedia untuk proses ini.');
-      } else setSummaryError(reason instanceof Error ? reason.message : 'Ringkasan analisis gagal dimuat.');
+        setSummaryError(tx('Artefak analisis belum tersedia untuk proses ini.', 'Analysis artifacts are not available for this job.'));
+      } else setSummaryError(reason instanceof Error ? reason.message : tx('Ringkasan analisis gagal dimuat.', 'Failed to load analysis summary.'));
     }).finally(() => setSummaryLoading(false));
   };
 
@@ -310,7 +329,7 @@ export function ElbowAnalysisPanel({
           : jobStatus === 'FAILED' || jobStatus === 'CANCELLED' ? <StatePanel type="error" title={tx('Pencarian Parameter tidak berhasil diselesaikan', 'Parameter Search did not complete')} message={tx('Analisis K-Distance tidak dapat dibuka karena proses sumber gagal atau dibatalkan. Periksa rincian proses pada Manajemen Proses.', 'k-Distance analysis cannot be opened because the source job failed or was cancelled. Check details in Job Management.')} />
           : jobStatus !== 'SUCCESS' ? <StatePanel type="info" title={tx('Menunggu Pencarian Parameter selesai', 'Waiting for Parameter Search to finish')} message={tx('Kurva K-Distance dan titik Knee dapat ditinjau setelah backend menyelesaikan proses Pencarian Parameter.', 'k-Distance curves and knee points can be reviewed once Parameter Search finishes.')} />
             : summaryLoading ? <StatePanel type="loading" title={tx('Memuat analisis K-Distance', 'Loading k-Distance analysis')} message={tx('Mengambil ringkasan kurva dan metadata dari server.', 'Fetching curve summaries and metadata from the server.')} />
-              : summaryError ? <StatePanel type="info" title={tx('Artefak analisis belum tersedia', 'Analysis artifacts unavailable')} message={summaryError} action={<button className="button button-secondary" type="button" onClick={retrySummary}>{tx('Coba lagi', 'Try again')}</button>} />
+              : summaryError ? <StatePanel type="info" title={tx('Artefak analisis belum tersedia', 'Analysis artifacts unavailable')} message={friendlyErrorMessage(summaryError, undefined, undefined, lang)} action={<button className="button button-secondary" type="button" onClick={retrySummary}>{tx('Coba lagi', 'Try again')}</button>} />
                 : !summary ? <StatePanel type="empty" title={tx('Analisis belum tersedia', 'Analysis unavailable')} message={tx('Ringkasan kurva belum dapat ditampilkan.', 'Curve summary could not be displayed.')} />
                   : !summary.ready ? <StatePanel type="info" title={tx('Artefak belum siap ditampilkan', 'Artifacts not ready yet')} message={tx('Backend belum menandai artefak K-Distance sebagai siap. Muat ulang setelah proses penyimpanan selesai.', 'Artifacts are not marked ready yet. Reload after artifact persistence finishes.')} />
                     : !summary.curves.length ? <StatePanel type="empty" title={tx('Kurva belum tersedia', 'No curves available')} message={tx('Tidak ada kurva MinPts yang dikembalikan untuk proses ini.', 'No MinPts curves were returned for this job.')} />

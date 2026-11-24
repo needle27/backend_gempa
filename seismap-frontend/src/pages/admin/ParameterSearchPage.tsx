@@ -136,7 +136,7 @@ export function ParameterSearchPage() {
     }
     getExperiments(parameterJobId)
       .then((items) => { if (active) setExperiments(items); })
-      .catch((reason) => { if (active) setExperimentError(reason instanceof Error ? reason.message : 'Eksperimen belum tersedia.'); });
+      .catch((reason) => { if (active) setExperimentError(reason instanceof Error ? reason.message : tx('Eksperimen belum tersedia.', 'Experiments are not available yet.')); });
     return () => { active = false; };
   }, [parameterJobId, currentParameterJob?.id, currentParameterJob?.status]);
 
@@ -147,19 +147,19 @@ export function ParameterSearchPage() {
     const sensitivity = parseNumberList(sensitivityText);
     const epsCandidates = parseNumberList(epsCandidatesText);
     if (!minSamples || !minSamples.length || minSamples.some((n) => !Number.isInteger(n) || n < 2)) {
-      setError('Kandidat MinPts wajib diisi dengan bilangan bulat minimal 2 dan dipisahkan koma.'); return;
+      setError(tx('Kandidat MinPts wajib diisi dengan bilangan bulat minimal 2 dan dipisahkan koma.', 'MinPts candidates must be comma-separated integers of at least 2.')); return;
     }
     if (!sensitivity || sensitivity.some((n) => !Number.isFinite(n))) {
-      setError('Persentase sensitivitas harus berupa angka yang dipisahkan koma.'); return;
+      setError(tx('Persentase sensitivitas harus berupa angka yang dipisahkan koma.', 'Sensitivity percentages must be comma-separated numbers.')); return;
     }
     if (epsCandidates === null || epsCandidates.some((n) => !Number.isFinite(n) || n <= 0)) {
-      setError('Kandidat Epsilon harus berupa angka positif dalam kilometer.'); return;
+      setError(tx('Kandidat Epsilon harus berupa angka positif dalam kilometer.', 'Epsilon candidates must be positive numbers in kilometers.')); return;
     }
     if (!sensitivity.length) {
-      setError('Persentase sensitivitas wajib diisi.'); return;
+      setError(tx('Persentase sensitivitas wajib diisi.', 'Sensitivity percentages are required.')); return;
     }
     if (!useDefaultGrid && !epsCandidates.length && !sensitivity.length) {
-      setError('Aktifkan default grid atau masukkan sumber kandidat epsilon.'); return;
+      setError(tx('Aktifkan default grid atau masukkan sumber kandidat epsilon.', 'Enable the standard grid or enter explicit epsilon candidates.')); return;
     }
     setBusy(true); setError(null); setExperiments(null); setExperimentError(null);
     try {
@@ -168,9 +168,11 @@ export function ParameterSearchPage() {
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 409 && reason.code === 'JOB_ALREADY_RUNNING') {
         const existingJobId = Number(reason.details?.job_id);
-        if (Number.isFinite(existingJobId) && existingJobId > 0) { setParameterJobId(existingJobId); setError(`Proses yang sedang berjalan ditemukan: #${existingJobId}. Statusnya sedang dipantau.`); }
-        else setError(reason.message);
-      } else setError(reason instanceof Error ? reason.message : 'Pencarian Parameter gagal dikirim.');
+        if (Number.isFinite(existingJobId) && existingJobId > 0) {
+          setParameterJobId(existingJobId);
+          setError(tx(`Proses yang sedang berjalan ditemukan: #${existingJobId}. Statusnya sedang dipantau.`, `An active job was found: #${existingJobId}. Monitoring its status.`));
+        } else setError(reason.message);
+      } else setError(reason instanceof Error ? reason.message : tx('Pencarian Parameter gagal dikirim.', 'Failed to submit Parameter Search.'));
     } finally { setBusy(false); }
   };
 
@@ -746,7 +748,9 @@ export function ParameterSearchPage() {
                               <small className="invalid-subtext">
                                 {item.invalid_reasons && item.invalid_reasons.length > 0
                                   ? item.invalid_reasons.map((r) => formatInvalidReason(r, jobMetadata?.validity_thresholds, lang)).join('; ')
-                                  : item.invalid_reason || tx('Tidak memenuhi ambang batas', 'Outside validity thresholds')}
+                                  : item.invalid_reason
+                                    ? formatInvalidReason(item.invalid_reason, jobMetadata?.validity_thresholds, lang)
+                                    : tx('Tidak memenuhi ambang batas', 'Outside validity thresholds')}
                               </small>
                             </div>
                           )}

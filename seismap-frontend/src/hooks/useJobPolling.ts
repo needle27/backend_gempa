@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { getActiveLanguage } from '../i18n/LanguageContext';
 import { getJob } from '../api/services';
 import type { ProcessingJob } from '../types/domain';
 import { invalidateCacheKey, invalidateCachePrefix } from '../utils/resourceCache';
@@ -61,7 +62,13 @@ export function useJobPolling(jobId: number | null) {
         }
       } catch (reason) {
         if (!active) return;
-        setError(reason instanceof Error ? reason.message : 'Tidak dapat memuat status proses.');
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : getActiveLanguage() === 'en'
+              ? 'Unable to load job status.'
+              : 'Tidak dapat memuat status proses.',
+        );
       } finally {
         inFlight = false;
       }

@@ -215,7 +215,7 @@ export function ClusterMapPage() {
           ...prev,
           loading: false,
           progress: null,
-          error: reason instanceof Error ? reason.message : 'Data peta belum dapat diambil dari server.',
+          error: reason instanceof Error ? reason.message : tx('Data peta belum dapat diambil dari server.', 'Map data could not be loaded from the server.'),
         }));
       }
     }
