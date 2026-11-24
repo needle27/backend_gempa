@@ -2378,11 +2378,11 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
 }
 .public-main > .page-stack,
 .public-main > .home-page {
-  animation: public-page-enter 260ms ease both;
+  animation: public-page-enter 220ms ease;
 }
 @keyframes public-page-enter {
-  from { opacity: .65; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: .65; }
+  to { opacity: 1; }
 }
 .section-heading-row {
   display: flex;
@@ -3315,6 +3315,9 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
     left: 0 !important;
     width: 85vw !important;
     max-width: 24rem !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    box-sizing: border-box !important;
     z-index: 1200 !important;
     background: #0b1a2b !important;
     border-right: 1px solid rgba(72, 215, 237, 0.2) !important;
@@ -3323,10 +3326,13 @@ body { overflow-x: clip; color: var(--text); font-size: 14px; line-height: 1.55;
     overscroll-behavior: contain !important;
     -webkit-overflow-scrolling: touch !important;
     transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
-    padding: 20px 16px 40px !important;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(36px, env(safe-area-inset-bottom)) !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 16px !important;
+  }
+  .public-map-page .map-side-panel.map-drawer-mobile > * {
+    flex-shrink: 0 !important;
   }
   .public-map-page .map-side-panel.map-drawer-mobile.-translate-x-full,
   .public-map-page .map-side-panel.map-drawer-mobile.drawer-closed {
