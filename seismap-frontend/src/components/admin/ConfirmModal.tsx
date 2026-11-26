@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, LoaderCircle, X } from 'lucide-react';
 import { useI18n } from '../../i18n/LanguageContext';
 
@@ -28,100 +28,137 @@ export function ConfirmModal({
   onCancel,
 }: ConfirmModalProps) {
   const { t } = useI18n();
-  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const pressedOutsideRef = useRef(false);
   const resolvedConfirmLabel = confirmLabel ?? t.common.confirmDefault;
   const resolvedCancelLabel = cancelLabel ?? t.common.cancelDefault;
 
   useEffect(() => {
-    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !loading) {
+    if (isOpen) {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleCancel = (e: Event) => {
+      e.preventDefault();
+      if (!loading) {
         onCancel();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    // Auto-focus confirm button on open
-    const timer = window.setTimeout(() => {
-      confirmBtnRef.current?.focus();
-    }, 50);
-
+    dialog.addEventListener('cancel', handleCancel);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = originalOverflow;
-      window.clearTimeout(timer);
+      dialog.removeEventListener('cancel', handleCancel);
+    };
+  }, [loading, onCancel]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !isOpen) return;
+    if ('closedBy' in HTMLDialogElement.prototype) return;
+
+    const isOutside = (e: PointerEvent) => {
+      const rect = dialog.getBoundingClientRect();
+      return (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      );
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      pressedOutsideRef.current = isOutside(e);
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (pressedOutsideRef.current && isOutside(e) && !loading) {
+        onCancel();
+      }
+      pressedOutsideRef.current = false;
+    };
+
+    dialog.addEventListener('pointerdown', handlePointerDown);
+    dialog.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      dialog.removeEventListener('pointerdown', handlePointerDown);
+      dialog.removeEventListener('pointerup', handlePointerUp);
     };
   }, [isOpen, loading, onCancel]);
-
-  if (!isOpen) return null;
 
   const defaultIcon = variant === 'danger' ? <AlertTriangle size={22} /> : <CheckCircle2 size={22} />;
 
   return (
-    <div
-      className="confirm-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-modal-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !loading) {
-          onCancel();
-        }
-      }}
+    <dialog
+      ref={dialogRef}
+      className={`confirm-modal-dialog confirm-modal-${variant}`}
+      aria-labelledby={titleId}
+      {...({ closedby: loading ? 'none' : 'any' } as Record<string, string>)}
     >
-      <div className={`confirm-modal-box confirm-modal-${variant}`} onClick={(e) => e.stopPropagation()}>
-        <div className="confirm-modal-header">
-          <div className="confirm-modal-icon-wrapper">
-            {icon || defaultIcon}
+      {isOpen ? (
+        <div className="confirm-modal-box">
+          <div className="confirm-modal-header">
+            <div className="confirm-modal-icon-wrapper">
+              {icon || defaultIcon}
+            </div>
+            <div className="confirm-modal-heading">
+              <h1 id={titleId}>{title}</h1>
+            </div>
+            <button
+              type="button"
+              className="confirm-modal-close"
+              onClick={onCancel}
+              disabled={loading}
+              aria-label={t.common.closeModalAria}
+            >
+              <X size={16} />
+            </button>
           </div>
-          <div className="confirm-modal-heading">
-            <h3 id="confirm-modal-title">{title}</h3>
+
+          <div className="confirm-modal-body">
+            {typeof message === 'string' ? <p>{message}</p> : message}
           </div>
-          <button
-            type="button"
-            className="confirm-modal-close"
-            onClick={onCancel}
-            disabled={loading}
-            aria-label={t.common.closeModalAria}
-          >
-            <X size={16} />
-          </button>
-        </div>
 
-        <div className="confirm-modal-body">
-          {typeof message === 'string' ? <p>{message}</p> : message}
+          <div className="confirm-modal-actions">
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={onCancel}
+              disabled={loading}
+              autoFocus={variant === 'danger'}
+            >
+              {resolvedCancelLabel}
+            </button>
+            <button
+              type="button"
+              className={`button button-${variant === 'danger' ? 'danger' : 'primary'}`}
+              onClick={onConfirm}
+              disabled={loading}
+              autoFocus={variant !== 'danger'}
+            >
+              {loading ? (
+                <>
+                  <LoaderCircle className="spin" size={14} /> {t.common.processing}
+                </>
+              ) : (
+                resolvedConfirmLabel
+              )}
+            </button>
+          </div>
         </div>
-
-        <div className="confirm-modal-actions">
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={onCancel}
-            disabled={loading}
-          >
-            {resolvedCancelLabel}
-          </button>
-          <button
-            ref={confirmBtnRef}
-            type="button"
-            className={`button button-${variant === 'danger' ? 'danger' : 'primary'}`}
-            onClick={onConfirm}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <LoaderCircle className="spin" size={14} /> {t.common.processing}
-              </>
-            ) : (
-              resolvedConfirmLabel
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+      ) : null}
+    </dialog>
   );
 }
